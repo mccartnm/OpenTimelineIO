@@ -120,6 +120,7 @@ Composition::remove_child(int index, ErrorStatus* error_status) {
     return true;
 }
 
+
 bool Composition::read_from(Reader& reader) {
     if (reader.read("children", &_children) &&
         Parent::read_from(reader)) {
@@ -299,6 +300,9 @@ std::vector<Composable*> Composition::_children_at_time(RationalTime t, ErrorSta
     for (size_t i = 0; i < _children.size() && !(*error_status); i++) {
         if (range_of_child_at_index(int(i), error_status).contains(t)) {
             result.push_back(_children[i].value);
+
+            if (!_overlaping_children())
+                break;
         }
     }
     
@@ -334,5 +338,11 @@ optional<TimeRange> Composition::trim_child_range(TimeRange child_range) const {
 bool Composition::has_child(Composable* child) const {
     return _child_set.find(child) != _child_set.end();
 }
+
+
+bool Composition::_overlaping_children() const {
+    return true;
+}
+
 
 } }

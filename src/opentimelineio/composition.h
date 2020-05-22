@@ -59,15 +59,21 @@ public:
     
     virtual std::map<Composable*, TimeRange> range_of_all_children(ErrorStatus* error_status) const;
 
+    // FIXME :: ---------------------------------------------------------- Where should this live?
+    int _index_of_child(Composable const* child, ErrorStatus* error_status) const;
+    // --------------------------------------------------------------------------------
+
 protected:
     virtual ~Composition();
 
     virtual bool read_from(Reader&);
     virtual void write_to(Writer&) const;
 
-    int _index_of_child(Composable const* child, ErrorStatus* error_status) const;
     std::vector<Composition*> _path_from_child(Composable const* child, ErrorStatus* error_status) const;
     
+    // When false, will short-circut _children_at_time to return a vector of one item
+    virtual bool _overlaping_children() const;
+
 private:
     // XXX: python implementation is O(n^2) in number of children
     std::vector<Composable*> _children_at_time(RationalTime, ErrorStatus* error_status) const;

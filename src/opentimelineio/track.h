@@ -56,6 +56,8 @@ protected:
     virtual bool read_from(Reader&);
     virtual void write_to(Writer&) const;
 
+    virtual bool _overlaping_children() const;
+
 private:
     std::string _kind;
 };

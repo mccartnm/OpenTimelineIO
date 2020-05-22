@@ -209,4 +209,9 @@ std::map<Composable*, TimeRange> Track::range_of_all_children(ErrorStatus* error
     return result;
 }
 
+
+bool Track::_overlaping_children() const {
+    return false;
+}
+
 } }
