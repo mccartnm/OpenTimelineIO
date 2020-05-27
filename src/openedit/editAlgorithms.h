@@ -26,7 +26,7 @@ struct PlacementKind
 */
 EditEvents place(
         Item* child,
-        Composition* into,
+        Track* track,
         RationalTime const& at,
         ErrorStatus* error_status,
         std::string const& placement = PlacementKind::overwrite,

@@ -2,12 +2,17 @@
 
 #include "opentimelineio/gap.h"
 #include "opentimelineio/item.h"
+#include "opentimelineio/track.h"
 
 namespace openedit { namespace OPENEDIT_VERSION {
 
 /* Implementation Utilities */
 namespace {
 
+/*
+    An intersection utility with ranges that correspond based on the
+    IntersectionType.
+*/
 struct Intersection
 {
     enum IntersectionType {
@@ -20,8 +25,19 @@ struct Intersection
 
     IntersectionType type;
     RetainedItem const& item;
-    optional<TimeRange> source_range_left = nullopt;
-    optional<TimeRange> source_range_right = nullopt;
+    optional<TimeRange> source_range_left;
+    optional<TimeRange> source_range_right;
+
+    Intersection(
+        IntersectionType t,
+        RetainedItem const& i,
+        optional<TimeRange> source_left = nullopt,
+        optional<TimeRange> source_right = nullopt)
+        : type(t)
+        , item(i)
+        , source_range_left(source_left)
+        , source_range_right(source_right)
+        {}
 
     TimeRange invalid_time() const {
         return TimeRange(RationalTime(0, -1), RationalTime(0, -1));
@@ -43,7 +59,6 @@ Intersections get_intersections(
     Intersections intersections;
 
     bool contact = false;
-    bool end_conact = false;
 
     for (size_t idx = 0; idx < children.size(); idx++) {
 
@@ -58,7 +73,7 @@ Intersections get_intersections(
         auto child_range = track->range_of_child_at_index(int(idx), otio_error.get());
         if (*(otio_error.get())) {
             *error_status = ErrorStatus(otio_error);
-            return;
+            return {};
         }
 
         if (time_range.contains(child_range)) {
@@ -138,8 +153,8 @@ Intersections get_intersections(
 
 EditEvents place(
     Item* child,
-    Composition* into,
-    RationalTime const& at,
+    Track* track,
+    RationalTime const& at_time,
     ErrorStatus* error_status,
     std::string const& placement,
     RetainedItem fill_template,
@@ -159,8 +174,8 @@ EditEvents place(
         return {};
     }
 
-    auto child_range = source_range.value;
-    auto intersections = get_intersections(into, child_range, error_status);
+    TimeRange place_range = TimeRange(at_time, (*source_range).duration());
+    auto intersections = get_intersections(track, place_range, error_status);
     if (*error_status)
         return {};
 
@@ -189,7 +204,7 @@ EditEvents place(
         // edge of the tracks trimmed range. Build a gap to fill the
         // space and call it a day
         //
-        TimeRange range = into->available_range(otio_error.get());
+        TimeRange range = track->available_range(otio_error.get());
         if (*(otio_error.get())) {
             *error_status = ErrorStatus(otio_error);
             return {};
@@ -204,12 +219,12 @@ EditEvents place(
         fill->set_source_range(range);
 
         events.push_back(EditEvent::create(
-            into,
+            track,
             fill,
             EditEventKind::append
         ));
         events.push_back(EditEvent::create(
-            into,
+            track,
             child,
             EditEventKind::append
         ));
@@ -236,11 +251,11 @@ EditEvents place(
                 {
                 case Intersection::Eclipse:
                 {
-                    events.push_back({
-                        into,
+                    events.push_back(EditEvent::create(
+                        track,
                         intersect.item,
                         EditEventKind::remove
-                    });
+                    ));
                     break;
                 }
                 case Intersection::SingleEdgeLeft:
@@ -251,7 +266,7 @@ EditEvents place(
                         use_range = intersect.source_range_left.value_or(default_range);
 
                     events.push_back(EditEvent::create(
-                        into,
+                        track,
                         intersect.item,
                         EditEventKind::modify,
                         -1,
@@ -268,27 +283,27 @@ EditEvents place(
                     }
                     Item* cloned_item = static_cast<Item*>(split);
 
-                    int index = into->_index_of_child(intersect.item, otio_error.get());
+                    int index = track->_index_of_child(intersect.item, otio_error.get());
                     if (*(otio_error.get())) {
                         *error_status = ErrorStatus(otio_error);
                         return {};
                     }
 
                     events.push_back(EditEvent::create(
-                        into,
+                        track,
                         intersect.item,
                         EditEventKind::modify,
                         -1,
                         intersect.source_range_left
                     ));
                     events.push_back(EditEvent::create(
-                        into,
+                        track,
                         child,
                         EditEventKind::insert,
                         index + 1
                     ));
                     events.push_back(EditEvent::create(
-                        into,
+                        track,
                         cloned_item,
                         EditEventKind::insert,
                         index + 2,
@@ -311,7 +326,7 @@ EditEvents place(
             Intersection &intersect = intersections[0]; // Empty handled above
             TimeRange composable_range = intersect.item.value->source_range().value_or(default_range);
 
-            int index = into->_index_of_child(intersect.item, otio_error.get());
+            int index = track->_index_of_child(intersect.item, otio_error.get());
             if (*(otio_error.get())) {
                 *error_status = ErrorStatus(otio_error);
                 return {};
@@ -319,10 +334,10 @@ EditEvents place(
 
             if (intersect.type == Intersection::Eclipse ||
                 intersect.type == Intersection::SingleEdgeRight ||
-                child_range.start_time() <= composable_range.start_time())
+                place_range.start_time() <= composable_range.start_time())
             {
                 events.push_back(EditEvent::create(
-                    into,
+                    track,
                     child,
                     EditEventKind::insert,
                     index
@@ -330,14 +345,13 @@ EditEvents place(
             }
             else { // SingleEdgeLeft || SplitTake
                 events.push_back(EditEvent::create(
-                    into,
+                    track,
                     child,
                     EditEventKind::insert,
                     index + 1
                 ));
 
-                RationalTime child_start_time = child->source_range().value_or(default_range).start_time();
-                if (child_start_time < composable_range.end_time_exclusive())
+                if (at_time < composable_range.end_time_exclusive())
                 {
                     auto split = intersect.item.value->clone(otio_error.get());
                     if (*(otio_error.get())) {
@@ -345,22 +359,24 @@ EditEvents place(
                         return {};
                     }
 
+                    RetainedItem newitem = static_cast<Item*>(split);
+
                     // FIXME: Need a better way to assert values...
                     TimeRange split_source_range = TimeRange(
-                        intersect.source_range_left.value.end_time_exclusive(),
-                        composable_range.duration() - intersect.source_range_left.value.duration()
+                        (*intersect.source_range_left).end_time_exclusive(),
+                        composable_range.duration() - (*intersect.source_range_left).duration()
                     );
 
                     events.push_back(EditEvent::create(
-                        into,
+                        track,
                         child,
                         EditEventKind::modify,
                         -1,
                         intersect.source_range_left
                     ));
                     events.push_back(EditEvent::create(
-                        into,
-                        child,
+                        track,
+                        newitem,
                         EditEventKind::insert,
                         index + 2
                     ));

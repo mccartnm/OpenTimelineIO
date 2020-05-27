@@ -5,7 +5,7 @@
 namespace openedit { namespace OPENEDIT_VERSION {
 
 EditEventPtr EditEvent::create(
-        Composition* parent,
+        Track* parent,
         Item* composable,
         std::string const& kind,
         int index,
@@ -22,7 +22,7 @@ EditEventPtr EditEvent::create(
 
 
 EditEvent::EditEvent(
-        Composition* parent,
+        Track* parent,
         Item* composable,
         std::string const& kind,
         int index,

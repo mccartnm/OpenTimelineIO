@@ -7,6 +7,7 @@
 #include "opentimelineio/serializableObject.h"
 #include "opentimelineio/composition.h"
 #include "opentimelineio/composable.h"
+#include "opentimelineio/track.h"
 
 namespace openedit { namespace OPENEDIT_VERSION {
 
@@ -32,7 +33,7 @@ class EditEvent
 {
 public:
     static EditEventPtr create(
-            Composition* parent,
+            Track* parent,
             Item* composable,
             std::string const& kind,
             int index = -1,
@@ -40,7 +41,7 @@ public:
 
     ~EditEvent();
 
-    SerializableObject::Retainer<Composition> const& get_parent() const {
+    SerializableObject::Retainer<Track> const& get_parent() const {
         return _parent;
     }
 
@@ -62,7 +63,7 @@ public:
 
 protected:
     EditEvent(
-        Composition* parent,
+        Track* parent,
         Item* composable,
         std::string const& kind,
         int index,
@@ -70,7 +71,7 @@ protected:
 
 private:
 
-    SerializableObject::Retainer<Composition> _parent = nullptr;
+    SerializableObject::Retainer<Track> _parent = nullptr;
     SerializableObject::Retainer<Item> _item = nullptr;
     std::string _kind = EditEventKind::none;
 
