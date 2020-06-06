@@ -68,6 +68,8 @@ add_library(opentimelineio SHARED
             typeRegistry.cpp
             unknownSchema.cpp ${OPENTIMELINEIO_HEADER_FILES})
 
+add_subdirectory(algos)
+
 target_include_directories(opentimelineio PUBLIC
                            "${PROJECT_SOURCE_DIR}/src"
                            "${PROJECT_SOURCE_DIR}/src/deps"

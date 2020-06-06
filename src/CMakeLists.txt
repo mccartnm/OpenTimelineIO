@@ -56,7 +56,6 @@ endif()
 add_subdirectory(deps)
 add_subdirectory(opentime)
 add_subdirectory(opentimelineio)
-add_subdirectory(openedit)
 
 if (OTIO_PYTHON_INSTALL)
     add_subdirectory(py-opentimelineio)

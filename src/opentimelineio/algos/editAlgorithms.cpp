@@ -320,7 +320,7 @@ EditEvents place(
         else if (placement == PlacementKind::insert) {
             //
             // -- Next is the predicated insertion. This will insert the
-            // item and shift _anything_ that it contacts. This can also
+            // item and shift _anything_ that it overlaps. This can also
             // result in a split item.
             //
             Intersection &intersect = intersections[0]; // Empty handled above
