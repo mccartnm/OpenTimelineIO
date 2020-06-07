@@ -37,6 +37,7 @@ set(OPENTIMELINEIO_HEADER_FILES
     version.h)
 
 add_subdirectory(event)
+add_subdirectory(edit)
 
 add_library(opentimelineio SHARED
             clip.cpp
@@ -80,6 +81,7 @@ target_include_directories(opentimelineio PUBLIC
                            "${PROJECT_SOURCE_DIR}/src/deps/rapidjson/include")
 
 source_group(Events FILES ${OTIO_EVENT_SOURCES})
+source_group(Edit FILES ${OTIO_EDIT_SOURCES})
 
 target_link_libraries(opentimelineio PUBLIC opentime)
 set_target_properties(opentimelineio PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib"
