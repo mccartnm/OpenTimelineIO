@@ -1,0 +1,13 @@
+set (OTIO_EVENT_HEADERS
+     event/event.h
+     event/registry.h)
+
+set (OTIO_EVENT_SOURCES
+     event/event.cpp
+     event/registry.cpp
+     ${OTIO_EVENT_HEADERS}
+     PARENT_SCOPE)
+
+if (NOT OTIO_CXX_NOINSTALL)
+    install(FILES ${OPENTIME_HEADER_FILES} DESTINATION include/opentime)
+endif (NOT OTIO_CXX_NOINSTALL)
