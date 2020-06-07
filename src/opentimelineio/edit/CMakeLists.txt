@@ -1,10 +1,10 @@
 set(OTIO_EDIT_HEADER_FILES
-    edit/event.h
+    edit/edit.h
     edit/editAlgorithms.h
     )
 
 set (OTIO_EDIT_SOURCES
-     edit/event.cpp
+     edit/edit.cpp
      ${OTIO_EDIT_HEADER_FILES}
      # Access Above
      PARENT_SCOPE)

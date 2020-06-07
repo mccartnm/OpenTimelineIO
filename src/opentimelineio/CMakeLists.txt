@@ -70,9 +70,8 @@ add_library(opentimelineio SHARED
             transition.cpp
             typeRegistry.cpp
             unknownSchema.cpp ${OPENTIMELINEIO_HEADER_FILES}
-            ${OTIO_EVENT_SOURCES})
-
-add_subdirectory(algos)
+            ${OTIO_EVENT_SOURCES}
+            ${OTIO_EDIT_SOURCES})
 
 target_include_directories(opentimelineio PUBLIC
                            "${PROJECT_SOURCE_DIR}/src"

@@ -1,61 +1,33 @@
 
-#include "openedit/editEvent.h"
+#include "opentimelineio/edit/edit.h"
 #include "opentimelineio/serializableObject.h"
 
-namespace openedit { namespace OPENEDIT_VERSION {
+namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 
-EditEventPtr EditEvent::create(
-        Track* parent,
-        Item* composable,
-        std::string const& kind,
-        int index,
-        optional<TimeRange> const& source_range)
-{
-    return std::shared_ptr<EditEvent>(new EditEvent(
-        parent,
-        composable,
-        kind,
-        index,
-        source_range
-    ));
+bool Edit::read_from(SerializableObject::Reader& reader/*, EventContext& context*/) {
+    //
+    // REQUIRES: ID System for item context
+    //
+    // std::string track_id;
+    // reader.read("track", &track_id);
+    // _track = context.from_id<Track>(track_id);
+    //
+    // std::string item_id;
+    // reader.read("item", &item_id);
+    // _item = context.from_id<Item>(item_id);
+    //
+    return true;
 }
 
 
-EditEvent::EditEvent(
-        Track* parent,
-        Item* composable,
-        std::string const& kind,
-        int index,
-        optional<TimeRange> const& source_range)
-    : _parent(parent)
-    , _item(composable)
-    , _kind(kind)
-    , _index(index)
-    , _source_range(source_range)
-{
-    if (_item)
-        _original_range = _item.value->source_range();
-}
-
-
-EditEvent::~EditEvent()
-{
-    // Clean up if required.
-    if (_item) {
-        Item* item = _item.take_value();
-        if (_kind == EditEventKind::remove)
-            item->possibly_delete();
-    }
-}
-
-
-bool EditEvent::run(ErrorStatus *error_status) {
-    return false; // TODO
-}
-
-
-bool EditEvent::revert() {
-    return false; // TODO
+void Edit::write_to(SerializableObject::Writer& writer) const {
+    //
+    // REQUIRES: ID System for item context
+    //
+    // writer.writer("track", _track->context_id());
+    // writer.writer("item", _item->context_id());
+    //
+    return;
 }
 
 } }
