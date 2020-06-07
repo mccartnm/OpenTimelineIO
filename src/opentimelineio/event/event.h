@@ -6,27 +6,30 @@
 
 namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 
+class EventType;
+
 /*
     Event Requirements:
     - Atomic
-        - No outside dependencies (other than member lifetimes)
+        - No outside-state awareness (other than members required)
         - It should pass or fail completely
         - If failure occurs, rollback is mandatory
         - If all items have this, EventStack can also be an event
           which is the sum of all it's children events.
-        - ***Note: Does _not_ require statelessness
-    - Self-sufficient
+        - ***Note: Atomic does not mean stateless
+            - Statelessness is maintained with the EventType
+    - Rerunnable
         - Because of the rules above, an event should be consistently
           runnable both forward and reverse
         - **Not** required to handle the case of:
 
-            event.forward()
-            event.forward()
+            event1.forward()
+            event1.forward()
 
             or
 
-            event.reverse()
-            event.reverse()
+            event1.reverse()
+            event1.reverse()
 */
 class Event : public SerializableObjectWithMetadata {
 public:
@@ -37,12 +40,12 @@ public:
 
     using Parent = SerializableObjectWithMetadata;
 
-    Event(std::string const& event_type,
-          std::string const& name,
+    Event(EventType *event_type = nullptr,
+          std::string const& name = std::string(),
           AnyDictionary const& metadata = AnyDictionary());
 
-    virtual void forward(ErrorStatus *error_status) = 0;
-    virtual void reverse(ErrorStatus *error_status) = 0;
+    void forward(ErrorStatus *error_status);
+    void reverse(ErrorStatus *error_status);
 
 protected:
     virtual ~Event() {}
@@ -51,10 +54,10 @@ protected:
     virtual void write_to(Writer&) const;
 
 private:
-    std::string _event_type;
+    bool _has_run = false;
+    EventType* _event_type = nullptr;
 };
 
 using RetainedEvent = SerializableObject::Retainer<Event>;
-
 
 } }
