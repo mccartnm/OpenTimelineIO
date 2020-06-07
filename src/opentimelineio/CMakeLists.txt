@@ -36,6 +36,8 @@ set(OPENTIMELINEIO_HEADER_FILES
     vectorIndexing.h
     version.h)
 
+add_subdirectory(event)
+
 add_library(opentimelineio SHARED
             clip.cpp
             composable.cpp
@@ -66,13 +68,16 @@ add_library(opentimelineio SHARED
             trackAlgorithm.cpp
             transition.cpp
             typeRegistry.cpp
-            unknownSchema.cpp ${OPENTIMELINEIO_HEADER_FILES})
+            unknownSchema.cpp ${OPENTIMELINEIO_HEADER_FILES}
+            ${OTIO_EVENT_SOURCES})
 
 target_include_directories(opentimelineio PUBLIC
                            "${PROJECT_SOURCE_DIR}/src"
                            "${PROJECT_SOURCE_DIR}/src/deps"
                            "${PROJECT_SOURCE_DIR}/src/deps/optional-lite/include"
                            "${PROJECT_SOURCE_DIR}/src/deps/rapidjson/include")
+
+source_group(Events FILES ${OTIO_EVENT_SOURCES})
 
 target_link_libraries(opentimelineio PUBLIC opentime)
 set_target_properties(opentimelineio PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib"
