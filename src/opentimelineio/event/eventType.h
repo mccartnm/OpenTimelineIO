@@ -16,7 +16,7 @@ namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 class EventType {
 public:
     EventType(std::string const& type_id);
-    virtual ~EventType();
+    virtual ~EventType() {}
 
     virtual void forward(ErrorStatus *error_status) = 0; 
     virtual void reverse(ErrorStatus *error_status) = 0; 
