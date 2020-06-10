@@ -1,25 +1,30 @@
 #pragma once
 
-#include "opentimelineio/event/eventType.h"
-#include "opentimelineio/event/registry.h"
+#include "opentimelineio/event/event.h"
 
 namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 
-class EventStack : public EventType {
+class EventStack : public Event {
 public:
-    EventStack(std::string const& type_id);
+    struct Schema {
+        static auto constexpr name = "EventStack";
+        static int constexpr version = 1;
+    };
+
+    using Parent = Event;
+
+    EventStack(std::string const& name = std::string(),
+               AnyDictionary const& metadata = AnyDictionary());
 
     void add_event(RetainedEvent event);
-    void add_event(EventType* event_type,
-                   std::string const& name = std::string(),
-                   AnyDictionary const& metadata = AnyDictionary());
 
-    virtual void forward(ErrorStatus *error_status) override;
-    virtual void reverse(ErrorStatus *error_status) override;
 
 protected:
-    virtual bool read_from(SerializableObject::Reader&);
-    virtual void write_to(SerializableObject::Writer&) const;
+    void forward(ErrorStatus *error_status) override;
+    void reverse(ErrorStatus *error_status) override;
+
+    bool read_from(SerializableObject::Reader&) override;
+    void write_to(SerializableObject::Writer&) const override;
 
 private:
     std::vector<RetainedEvent> _events;

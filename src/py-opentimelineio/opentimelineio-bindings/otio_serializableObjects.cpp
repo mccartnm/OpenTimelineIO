@@ -80,9 +80,6 @@ static std::string str(AnyDictionary& value) {
 }
 */
 
-static py::arg_v name_arg = ("name"_a = std::string());
-static py::arg_v metadata_arg = ("metadata"_a = py::none());
-
 template <typename CONTAINER, typename ITEM>
 class ContainerIterator {
 public:

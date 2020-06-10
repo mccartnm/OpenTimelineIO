@@ -6,8 +6,6 @@
 
 namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 
-class EventType;
-
 /*
     Event Requirements:
     - Atomic
@@ -40,24 +38,26 @@ public:
 
     using Parent = SerializableObjectWithMetadata;
 
-    Event(EventType *event_type = nullptr,
-          std::string const& name = std::string(),
+    Event(std::string const& name = std::string(),
           AnyDictionary const& metadata = AnyDictionary());
 
-    void forward(ErrorStatus *error_status);
-    void reverse(ErrorStatus *error_status);
+    void run(ErrorStatus *error_status);
+    void revert(ErrorStatus *error_status);
 
 protected:
     virtual ~Event() {}
+
+    virtual void forward(ErrorStatus *error_status) = 0;
+    virtual void reverse(ErrorStatus *error_status) = 0;
 
     virtual bool read_from(Reader&);
     virtual void write_to(Writer&) const;
 
 private:
     bool _has_run = false;
-    EventType* _event_type = nullptr;
 };
 
 using RetainedEvent = SerializableObject::Retainer<Event>;
 
 } }
+

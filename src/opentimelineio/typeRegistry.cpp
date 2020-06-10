@@ -25,6 +25,8 @@
 #include "opentimelineio/stack.h"
 #include "opentimelineio/unknownSchema.h"
 
+#include "opentimelineio/event/registry.h"
+
 #include <assert.h>
 #include <vector>
 //#include <sstream>
@@ -81,6 +83,9 @@ TypeRegistry::TypeRegistry() {
                                   (*d)["marked_range"] = (*d)["range"];
                                   d->erase("range");
                               });
+
+    // -- Event System
+    EventRegistry::get().register_events(this);
 }
 
 bool

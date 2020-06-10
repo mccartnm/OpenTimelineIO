@@ -3,7 +3,7 @@
 #include "opentimelineio/optional.h"
 #include "opentimelineio/track.h"
 #include "opentimelineio/item.h"
-#include "opentimelineio/event/eventType.h"
+#include "opentimelineio/event/event.h"
 
 namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 
@@ -11,10 +11,22 @@ using RetainedItem = SerializableObject::Retainer<Item>;
 using RetainedTrack = SerializableObject::Retainer<Track>;
 
 /*
-    Abstract EventType for editing
+    Abstract Event for editing an Item
 */
-class Edit : public EventType {
+class ItemEdit : public Event {
 public:
+    struct Schema {
+        static constexpr auto name = "ItemEdit";
+        static constexpr int version = 1;
+    };
+
+    using Parent = Event;
+
+    ItemEdit(Track* track = nullptr,
+             Item* item = nullptr,
+             std::string const& name = std::string(),
+             AnyDictionary const& metadata = AnyDictionary());
+
     RetainedTrack const& get_track() const { return _track; }
     RetainedItem const& get_item() const { return _item; }
 

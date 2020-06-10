@@ -10,6 +10,7 @@
 #include "opentimelineio/vectorIndexing.h"
 #include "opentimelineio/safely_typed_any.h"
 
+using namespace pybind11::literals;
 using namespace opentimelineio::OPENTIMELINEIO_VERSION;
 
 void install_external_keepalive_monitor(SerializableObject* so, bool apply_now);
@@ -181,3 +182,6 @@ std::vector<T> py_to_vector(pybind11::object const& o) {
 
     return result;
 }
+
+static py::arg_v name_arg = ("name"_a = std::string());
+static py::arg_v metadata_arg = ("metadata"_a = py::none());

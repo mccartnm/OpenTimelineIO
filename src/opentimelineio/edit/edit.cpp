@@ -4,9 +4,18 @@
 
 namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 
-bool Edit::read_from(SerializableObject::Reader& reader/*, EventContext& context*/) {
+
+ItemEdit::ItemEdit(Track* track, Item* item, std::string const& name, AnyDictionary const& metadata)
+    : _track(track)
+    , _item(item)
+    , Parent(name, metadata)
+{    
+}
+
+
+bool ItemEdit::read_from(SerializableObject::Reader& reader/*, EventContext& context*/) {
     //
-    // REQUIRES: ID System for item context
+    // REQUIRES: ID (Or symbol) System for item context
     //
     // std::string track_id;
     // reader.read("track", &track_id);
@@ -20,7 +29,7 @@ bool Edit::read_from(SerializableObject::Reader& reader/*, EventContext& context
 }
 
 
-void Edit::write_to(SerializableObject::Writer& writer) const {
+void ItemEdit::write_to(SerializableObject::Writer& writer) const {
     //
     // REQUIRES: ID System for item context
     //
