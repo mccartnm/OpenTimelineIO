@@ -183,5 +183,5 @@ std::vector<T> py_to_vector(pybind11::object const& o) {
     return result;
 }
 
-static py::arg_v name_arg = ("name"_a = std::string());
-static py::arg_v metadata_arg = ("metadata"_a = py::none());
+static pybind11::arg_v name_arg = ("name"_a = std::string());
+static pybind11::arg_v metadata_arg = ("metadata"_a = pybind11::none());

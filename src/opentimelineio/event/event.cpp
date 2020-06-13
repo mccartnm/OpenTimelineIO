@@ -1,6 +1,8 @@
 #include "opentimelineio/event/event.h"
 #include "opentimelineio/event/registry.h"
 
+#define UNUSED(x) (void)x
+
 namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 
 
@@ -22,6 +24,16 @@ void Event::revert(ErrorStatus *error_status) {
         _has_run = false;
 }
 
+void Event::forward(ErrorStatus* error_status)
+{
+    UNUSED(error_status);
+}
+
+void Event::reverse(ErrorStatus* error_status)
+{
+    UNUSED(error_status);
+}
+
 bool Event::read_from(Reader &reader) {
     return Parent::read_from(reader);
 }
@@ -29,5 +41,7 @@ bool Event::read_from(Reader &reader) {
 void Event::write_to(Writer &writer) const {
     Parent::write_to(writer);
 }
+
+REGISTER_EVENT("Event", Event);
 
 } }

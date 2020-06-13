@@ -1,0 +1,42 @@
+#include "insertItemEvent.h"
+
+#include "opentimelineio/event/registry.h"
+
+namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
+
+InsertItemEdit::InsertItemEdit(
+    int index,
+    Track* track,
+    Item* item,
+    std::string const& name,
+    AnyDictionary const& metadata)
+    : Parent(track, item, name, metadata)
+    , _index(index)
+{
+}
+
+void InsertItemEdit::forward(ErrorStatus *error_status)
+{
+    track()->insert_child(_index, item(), error_status);
+}
+
+void InsertItemEdit::reverse(ErrorStatus *error_status)
+{
+    // Should we have it check that it's the right item?
+    track()->remove_child(_index, error_status);
+}
+
+bool InsertItemEdit::read_from(Reader& reader/*, EventContext& context*/) {
+    reader.read("index", &_index);
+    return Parent::read_from(reader);
+}
+
+void InsertItemEdit::write_to(Writer& writer) const {
+    Parent::write_to(writer);
+    writer.write("index", _index);
+    return;
+}
+
+REGISTER_EVENT("InsertItemEdit", InsertItemEdit);
+
+} }

@@ -12,9 +12,11 @@ typename ReverseIterator::iterator_type make_forward(ReverseIterator rit)
     return --(rit.base());
 }
 
-EventStack::EventStack(std::string const& name,
+EventStack::EventStack(std::vector<Event*> const& events,
+                       std::string const& name,
                        AnyDictionary const& metadata)
     : Parent(name, metadata)
+    , _events(events.begin(), events.end())
 {
 }
 

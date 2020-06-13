@@ -10,9 +10,7 @@ namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 using RetainedItem = SerializableObject::Retainer<Item>;
 using RetainedTrack = SerializableObject::Retainer<Track>;
 
-/*
-    Abstract Event for editing an Item
-*/
+/* Abstract Event for editing an Item */
 class ItemEdit : public Event {
 public:
     struct Schema {
@@ -26,16 +24,17 @@ public:
              Item* item = nullptr,
              std::string const& name = std::string(),
              AnyDictionary const& metadata = AnyDictionary());
+    virtual ~ItemEdit();
 
     RetainedTrack const& get_track() const { return _track; }
     RetainedItem const& get_item() const { return _item; }
 
 protected:
-    RetainedTrack& track() { return _track; }
-    RetainedItem& item() { return _item; }
+    Track* track() { return _track.value; }
+    Item* item() { return _item.value; }
 
-    virtual bool read_from(SerializableObject::Reader&);
-    virtual void write_to(SerializableObject::Writer&) const;
+    virtual bool read_from(Reader&);
+    virtual void write_to(Writer&) const;
 
 private:
     RetainedTrack _track = nullptr;

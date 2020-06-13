@@ -91,6 +91,8 @@ install(TARGETS opentimelineio
 
 if (NOT OTIO_CXX_NOINSTALL)
     install(FILES ${OPENTIMELINEIO_HEADER_FILES} DESTINATION include/opentimelineio)
+    install(FILES ${OTIO_EVENT_HEADER_FILES} DESTINATION include/opentimelineio/event)
+    install(FILES ${OTIO_EDIT_HEADER_FILES} DESTINATION include/opentimelineio/edit)
 endif (NOT OTIO_CXX_NOINSTALL)
 
 

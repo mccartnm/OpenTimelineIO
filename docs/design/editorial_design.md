@@ -10,6 +10,20 @@ The industry is full of timeline management software but nearly all of them incl
 2. Future users of the API - TDs and DCC developers
 3. Future Maintainers
 
+## Initial Motivation / Use Cases
+
+1. Clear, common, data modification
+    - Currently, manipulation is built on raw data structures and can do all of the operations below however a deeper understanding of that data is required to obtain desired results.
+        - As an example, if a user wants to remove a clip but keep the same track length, they must also handle creating something to fill the now-missing time with the same source range as the removed item and insert it in the original items index.
+    - This system would bridge the gap between core data structures and common edit maneuvers. It will allow users to feel like they are working with an interface or set of objects rather than pure data structures
+
+2. Changelist (git-ish for OTIO)
+    - A possibility for this is toolkit is the ability to generate deltas of a timeline to play them back as required. This delta system could power a more fluid lock-free environment for editor and inter-department changes.
+    - However, this is a variable step function compared to the use case above as it requires:
+        - Context management (schema's require an identifier)
+        - Timelines require a means of consistently hashing data structure
+        - Event system for atomic change control
+
 
 ## Structure
 The underlying implementation for these edit commands will be in C++, under the `opentimelineio/algo` directory.

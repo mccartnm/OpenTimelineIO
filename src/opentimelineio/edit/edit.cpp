@@ -12,8 +12,12 @@ ItemEdit::ItemEdit(Track* track, Item* item, std::string const& name, AnyDiction
 {    
 }
 
+ItemEdit::~ItemEdit() {
+    // Possibly check out the track and item to see if we can safely
+    // remove them... TODO?
+}
 
-bool ItemEdit::read_from(SerializableObject::Reader& reader/*, EventContext& context*/) {
+bool ItemEdit::read_from(Reader& reader/*, EventContext& context*/) {
     //
     // REQUIRES: ID (Or symbol) System for item context
     //
@@ -29,7 +33,7 @@ bool ItemEdit::read_from(SerializableObject::Reader& reader/*, EventContext& con
 }
 
 
-void ItemEdit::write_to(SerializableObject::Writer& writer) const {
+void ItemEdit::write_to(Writer& writer) const {
     //
     // REQUIRES: ID System for item context
     //

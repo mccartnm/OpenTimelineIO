@@ -13,11 +13,11 @@ public:
 
     using Parent = Event;
 
-    EventStack(std::string const& name = std::string(),
+    EventStack(std::vector<Event*> const& events = std::vector<Event*>(),
+               std::string const& name = std::string(),
                AnyDictionary const& metadata = AnyDictionary());
 
     void add_event(RetainedEvent event);
-
 
 protected:
     void forward(ErrorStatus *error_status) override;

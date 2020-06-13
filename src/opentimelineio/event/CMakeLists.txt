@@ -1,15 +1,12 @@
-set (OTIO_EVENT_HEADERS
+set (OTIO_EVENT_HEADER_FILES
      event/event.h
      event/registry.h
-     event/eventStack.h)
+     event/eventStack.h
+     PARENT_SCOPE)
 
 set (OTIO_EVENT_SOURCES
      event/event.cpp
      event/registry.cpp
      event/eventStack.cpp
-     ${OTIO_EVENT_HEADERS}
+     ${OTIO_EVENT_HEADER_FILES}
      PARENT_SCOPE)
-
-if (NOT OTIO_CXX_NOINSTALL)
-    install(FILES ${OPENTIME_HEADER_FILES} DESTINATION include/opentimelineio/event)
-endif (NOT OTIO_CXX_NOINSTALL)

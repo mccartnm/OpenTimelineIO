@@ -1,6 +1,8 @@
 #pragma once
 
 #include "opentimelineio/version.h"
+#include "opentimelineio/errorStatus.h"
+#include "opentimelineio/anyDictionary.h"
 #include "opentimelineio/serializableObjectWithMetadata.h"
 
 
@@ -47,11 +49,11 @@ public:
 protected:
     virtual ~Event() {}
 
-    virtual void forward(ErrorStatus *error_status) = 0;
-    virtual void reverse(ErrorStatus *error_status) = 0;
+    virtual void forward(ErrorStatus *error_status);
+    virtual void reverse(ErrorStatus *error_status);
 
-    virtual bool read_from(Reader&);
-    virtual void write_to(Writer&) const;
+    virtual bool read_from(Reader&/*, EventContext&*/) override;
+    virtual void write_to(Writer&) const override;
 
 private:
     bool _has_run = false;
