@@ -12,7 +12,8 @@ pybind11_add_module(_otio
                     otio_tests.cpp
                     otio_serializableObjects.cpp
                     otio_utils.cpp
-                    otio_event.cpp ${_OTIO_HEADER_FILES})
+                    otio_event.cpp
+                    ${_OTIO_HEADER_FILES})
 
 target_include_directories(_otio PUBLIC pybind11/include)
 target_link_libraries(_otio PUBLIC opentimelineio opentime)

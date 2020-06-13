@@ -42,6 +42,7 @@ void Event::write_to(Writer &writer) const {
     Parent::write_to(writer);
 }
 
-REGISTER_EVENT("Event", Event);
+// DO NOT REGISTER - THIS IS THE BASE
+// REGISTER_EVENT("Event", Event);
 
 } }

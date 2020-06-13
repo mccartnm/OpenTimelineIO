@@ -1,7 +1,5 @@
 #include "opentimelineio/event/registry.h"
 
-#include <iostream>
-
 #include <mutex>
 
 namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
@@ -33,7 +31,6 @@ void EventRegistry::add_event_class(event_factory::_Factory *event_type) {
 }
 
 void EventRegistry::register_events(TypeRegistry *registry) {
-    std::cout << "RESGITER_CALLED" << std::endl;
     for (auto pair: _event_registers) {
         pair.second->register_event(registry);
     }

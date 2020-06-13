@@ -37,7 +37,7 @@ set(OPENTIMELINEIO_HEADER_FILES
     version.h)
 
 add_subdirectory(event)
-add_subdirectory(edit)
+#add_subdirectory(edit)
 
 add_library(opentimelineio SHARED
             clip.cpp

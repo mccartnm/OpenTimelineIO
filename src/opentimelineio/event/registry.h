@@ -31,7 +31,7 @@ using UpgradeCallbacks = std::vector<UpgradeCallback>;
 
 namespace event_factory {
 /*
-    Namespace for event facotry management. Anything dealing with
+    Namespace for event factory management. Anything dealing with
     registering event types to the otio registry goes here. We
     keep them apart for brevity. This system saves us from including
     each and every header for C++ schema to register
