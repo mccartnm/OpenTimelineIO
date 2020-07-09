@@ -1,16 +1,16 @@
-// #pragma once
+#pragma once
 
-// #include "opentime/rationalTime.h"
+#include "opentime/rationalTime.h"
+#include "opentimelineio/item.h"
+#include "opentimelineio/track.h"
+#include "opentimelineio/event/eventStack.h"
 
-// #include "openedit/version.h"
-// #include "openedit/errorStatus.h"
-// #include "openedit/editEvent.h"
-
-// namespace openedit { namespace OPENEDIT_VERSION {
+namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 
 // using RetainedItem = SerializableObject::Retainer<Item>;
 // using RetainedComposition = SerializableObject::Retainer<Composition>;
 // using RetainedComposable = SerializableObject::Retainer<Composable>;
+// using RetainedEvent = SerializableObject::Retainer<Event>;
 
 // struct PlacementKind
 // {
@@ -21,9 +21,6 @@
 //     // static auto constexpr fail = "Fail";            //< Fail if non-gap contact made
 // };
 
-// /*
-//     Place a composable item onto a composition at a given RationalTime
-// */
 // EditEvents place(
 //         Item* child,
 //         Track* track,
@@ -33,4 +30,14 @@
 //         RetainedItem fill_template = nullptr,
 //         bool preview = false);
 
-// } }
+
+/* Place a composable item onto a composition at a given RationalTime */
+EventStack* overwrite(Item* item,
+                      Track* track,
+                      optional<RationalTime> const& track_time,
+                      ErrorStatus *error_status,
+                      Item* fill_template = nullptr,
+                      bool preview = false);
+
+
+} }

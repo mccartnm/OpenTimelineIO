@@ -43,17 +43,20 @@ public:
     Event(std::string const& name = std::string(),
           AnyDictionary const& metadata = AnyDictionary());
 
-    void run(ErrorStatus *error_status);
-    void revert(ErrorStatus *error_status);
+    void run(ErrorStatus* error_status);
+    void revert(ErrorStatus* error_status);
 
 protected:
     virtual ~Event() {}
 
-    virtual void forward(ErrorStatus *error_status);
-    virtual void reverse(ErrorStatus *error_status);
+    virtual void forward(ErrorStatus* error_status);
+    virtual void reverse(ErrorStatus* error_status);
 
     virtual bool read_from(Reader&/*, EventContext&*/) override;
     virtual void write_to(Writer&) const override;
+
+    // Overload to provide validation before forward/reverse are called
+    virtual bool _validate(ErrorStatus*) { return true; }
 
 private:
     bool _has_run = false;

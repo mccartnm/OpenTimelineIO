@@ -1,5 +1,6 @@
-#include "insertItemEvent.h"
+#include "opentimelineio/edit/insertItemEdit.h"
 
+#include "opentimelineio/vectorIndexing.h"
 #include "opentimelineio/event/registry.h"
 
 namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
@@ -11,18 +12,24 @@ InsertItemEdit::InsertItemEdit(
     std::string const& name,
     AnyDictionary const& metadata)
     : Parent(track, item, name, metadata)
-    , _index(index)
 {
+    if (this->track()) {
+        _index = adjusted_vector_index(index, this->track()->children());
+    }
 }
 
 void InsertItemEdit::forward(ErrorStatus *error_status)
 {
-    track()->insert_child(_index, item(), error_status);
+    auto use_track = track();
+    if (_index > use_track->children().size()) {
+        *error_status = ErrorStatus::ILLEGAL_INDEX;
+        return;
+    }
+    use_track->insert_child(_index, item(), error_status);
 }
 
 void InsertItemEdit::reverse(ErrorStatus *error_status)
 {
-    // Should we have it check that it's the right item?
     track()->remove_child(_index, error_status);
 }
 

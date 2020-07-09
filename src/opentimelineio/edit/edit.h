@@ -26,17 +26,23 @@ public:
              AnyDictionary const& metadata = AnyDictionary());
     virtual ~ItemEdit();
 
-    RetainedTrack const& get_track() const { return _track; }
-    RetainedItem const& get_item() const { return _item; }
-
-protected:
     Track* track() { return _track.value; }
     Item* item() { return _item.value; }
+
+protected:
+    void set_track(Track* track);
+    void set_item(Item* item);
+
+    void set_requires_track(bool required);
 
     virtual bool read_from(Reader&);
     virtual void write_to(Writer&) const;
 
+    bool _validate(ErrorStatus *error_status) override;
+
 private:
+    bool _require_track = true;
+
     RetainedTrack _track = nullptr;
     RetainedItem _item = nullptr;
 };

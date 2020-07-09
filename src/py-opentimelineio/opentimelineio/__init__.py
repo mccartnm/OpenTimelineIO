@@ -43,5 +43,6 @@ from . import (
     adapters,
     hooks,
     algorithms,
-    event
+    event,
+    edit,
 )

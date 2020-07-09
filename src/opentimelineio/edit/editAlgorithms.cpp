@@ -1,408 +1,181 @@
-// #include "openedit/editAlgorithms.h"
+#include "opentimelineio/edit/editAlgorithms.h"
 
 // #include "opentimelineio/gap.h"
 // #include "opentimelineio/item.h"
 // #include "opentimelineio/track.h"
 
-// namespace openedit { namespace OPENEDIT_VERSION {
+#include <memory>
 
-// /* Implementation Utilities */
-// namespace {
-
-// /*
-//     An intersection utility with ranges that correspond based on the
-//     IntersectionType.
-// */
-// struct Intersection
-// {
-//     enum IntersectionType {
-//         None = -1,
-//         Eclipse,
-//         SingleEdgeLeft,
-//         SingleEdgeRight,
-//         SplitTake,
-//     };
-
-//     IntersectionType type;
-//     RetainedItem const& item;
-//     optional<TimeRange> source_range_left;
-//     optional<TimeRange> source_range_right;
-
-//     Intersection(
-//         IntersectionType t,
-//         RetainedItem const& i,
-//         optional<TimeRange> source_left = nullopt,
-//         optional<TimeRange> source_right = nullopt)
-//         : type(t)
-//         , item(i)
-//         , source_range_left(source_left)
-//         , source_range_right(source_right)
-//         {}
-
-//     TimeRange invalid_time() const {
-//         return TimeRange(RationalTime(0, -1), RationalTime(0, -1));
-//     }
-
-//     bool left_valid() const {
-//         return source_range_left.value_or(invalid_time()).start_time().is_invalid_time();
-//     }
-// };
-// using Intersections = std::vector<Intersection>;
+namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 
 
-// Intersections get_intersections(
-//         Composition *track,
-//         TimeRange time_range,
-//         ErrorStatus* error_status)
-// {
-//     std::vector<RetainedComposable> const& children = track->children();
-//     Intersections intersections;
+namespace {
+/*
+    An intersection utility with ranges that correspond based
+    on the IntersectionType.
+*/
+struct Intersection
+{
+    enum IntersectionType {
+        None = -1,
+        Contains,           //< range contains another item
+        Contained,          //< range is contained by an item
+        OverlapBefore,      //< range overlaps item and (starts first or begins)
+        OverlapAfter,       //< range overlaps item and (ends second or ends)
+    };
 
-//     bool contact = false;
+    IntersectionType type;
+    RetainedItem const& item;
+    optional<TimeRange> source_range_before;
+    optional<TimeRange> source_range_after;
 
-//     for (size_t idx = 0; idx < children.size(); idx++) {
+    Intersection(
+        IntersectionType t,
+        RetainedItem const& i,
+        optional<TimeRange> source_before = nullopt,
+        optional<TimeRange> source_after = nullopt)
+        : type(t)
+        , item(i)
+        , source_range_before(source_before)
+        , source_range_after(source_after)
+        {}
+};
+using Intersections = std::vector<Intersection>;
 
-//         RetainedComposable const& composable = children[idx];
+Intersections get_intersections(
+        Track *track,
+        TimeRange const& track_range,
+        ErrorStatus* error_status,
+        int count = -1)
+{
+    std::vector<RetainedComposable> const& children = track->children();
+    Intersections intersections;
+    bool contact = false;
 
-//         // FIXME: Handle transitions
-//         RetainedItem child = dynamic_cast<Item *>(composable.value);
-//         if (!child)
-//             continue;
+    for (size_t idx = 0; idx < children.size(); idx++) {
+        RetainedComposable const& composable = children[idx];
 
-//         auto otio_error = ErrorStatus::otio_error_status();
-//         auto child_range = track->range_of_child_at_index(int(idx), otio_error.get());
-//         if (*(otio_error.get())) {
-//             *error_status = ErrorStatus(otio_error);
-//             return {};
-//         }
+        // FIXME: Handle transitions
+        RetainedItem child = dynamic_cast<Item *>(composable.value);
+        if (!child)
+            continue;
 
-//         if (time_range.contains(child_range)) {
-//             contact = true;
-//             intersections.push_back({
-//                 Intersection::Eclipse,
-//                 child
-//             });
-//         }
-//         else if (child_range.contains(time_range)) {
-//             contact = true;
-//             Intersection::IntersectionType type = Intersection::SplitTake;
-//             if (time_range.start_time() == child_range.start_time()) {
-//                 if (time_range.end_time_exclusive() == child_range.end_time_exclusive())
-//                     type = Intersection::Eclipse;
-//                 else
-//                     type = Intersection::SingleEdgeRight;
-//             }
-//             else {
-//                 type = Intersection::SingleEdgeLeft;
-//             }
+        auto child_range = track->range_of_child_at_index(int(idx), error_status);
+        if (*error_status) {
+            return {};
+        }
 
-//             intersections.push_back({
-//                 type,
-//                 child,
-//                 TimeRange{
-//                     child_range.start_time(),
-//                     (time_range.start_time() - child_range.start_time())
-//                 },
-//                 TimeRange{
-//                     time_range.end_time_exclusive(),
-//                     (child_range.end_time_exclusive() - time_range.end_time_exclusive())
-//                 }
-//             });
-//         }
-//         else if (time_range.overlaps(child_range)) {
-//             contact = true;
+        if (track_range.contains(child_range)) {
+            contact = true;
+            intersections.push_back({
+                Intersection::Contains,
+                child
+            });
 
-//             Intersection::IntersectionType type;
-//             TimeRange range_left, range_right;
+        } else if (child_range.contains(track_range)) {
+            contact = true;
+            Intersection::IntersectionType type = Intersection::Contained;
 
-//             if (time_range.end_time_exclusive() > child_range.end_time_exclusive()) {
-//                 type = Intersection::SingleEdgeLeft;
-//                 range_left = TimeRange(
-//                     child_range.start_time(),
-//                     (time_range.start_time() - child_range.start_time())
-//                 );
-//             }
-//             else {
-//                 type = Intersection::SingleEdgeRight;
-//                 range_right = TimeRange(
-//                     time_range.end_time_exclusive(),
-//                     (child_range.end_time_exclusive() - time_range.end_time_exclusive())
-//                 );
-//             }
-//             intersections.push_back({
-//                 type,
-//                 child,
-//                 range_left,
-//                 range_right
-//             });
-//         }
-//         else {
-//             // No intersections
-//             if (contact)
-//                 break; // Passed all intersections
-//         }
-//     }
-//     return intersections;
-// }
+            // WARNING:
+            // This is iffy at best. Needs proofing
+            //
 
-// } // impl namespace
+            TimeRange source_before = {
+                child_range.start_time(),
+                (track_range.start_time() - child_range.start_time())
+            };
+            TimeRange source_after = {
+                track_range.end_time_exclusive(),
+                child_range.end_time_exclusive() - child_range.end_time_exclusive()
+            };
 
+            if (child_range.begins(track_range.start_time())) {
+                // child_range.finishes() means Contains which is handled above
+                type = Intersection::OverlapBefore;
+            }
+            else if (track_range.finishes(child_range)) {
+                type = Intersection::OverlapAfter;
+            }
 
-// /* -------------------------------------------------------------------------- */
+            intersections.push_back({
+                type,
+                child,
+                source_before,
+                source_after
+            });
 
+        } else if (track_range.overlaps(child_range)) {
+            contact = true;
+            
+            Intersection::IntersectionType type;
+            TimeRange source_before, source_after;
 
-// EditEvents place(
-//     Item* child,
-//     Track* track,
-//     RationalTime const& at_time,
-//     ErrorStatus* error_status,
-//     std::string const& placement,
-//     RetainedItem fill_template,
-//     bool preview)
-// {
-//     auto otio_error = ErrorStatus::otio_error_status();
+            if (track_range.start_time() < child_range.start_time()) {
+                // The new range starts _before_ this child
+                type = Intersection::OverlapBefore;
+                source_after = TimeRange(
+                    track_range.end_time_exclusive(),
+                    (child_range.end_time_exclusive() - track_range.end_time_exclusive())
+                );
 
-//     //
-//     // First - We look for the items that we'll be intersecting
-//     // - To do this, we'll find the first item that we collide with
-//     //   and keep checking items until we no longer overlap
-//     //
-//     auto source_range = child->source_range();
-//     if (!source_range)
-//     {
-//         *error_status = ErrorStatus::NO_SOURCE_RANGE_ON_CHILD;
-//         return {};
-//     }
+            } else {
+                // .contains() above takes care of other cases
+                type = Intersection::OverlapAfter;
+                source_before = TimeRange(
+                    child_range.start_time(),
+                    (track_range.start_time() - child_range.start_time())
+                );
+            }
 
-//     TimeRange place_range = TimeRange(at_time, (*source_range).duration());
-//     auto intersections = get_intersections(track, place_range, error_status);
-//     if (*error_status)
-//         return {};
+            intersections.push_back({
+                type,
+                child,
+                source_before,
+                source_after
+            });
 
-//     EditEvents events;
+        } else {
+            // No intersections
+            if (contact)
+                break; // Passed all intersections
+        }
+    }
 
-//     // FIXME: This seems less-than-ideal for preview=true...
-//     auto get_fill = [fill_template, error_status, otio_error]() {
-//         RetainedItem compose;
-//         if (!fill_template)
-//             compose = new Gap();
-//         else {
-//             auto cloned = fill_template.value->clone(otio_error.get());
-//             if (*(otio_error.get())) {
-//                 *error_status = ErrorStatus(otio_error);
-//             }
-//             else {
-//                 compose = static_cast<Item*>(cloned);
-//             }
-//         }
-//         return compose;
-//     };
+}
 
-//     if (intersections.size() == 0) {
-//         //
-//         // We have nothing here, this means we're passed the
-//         // edge of the tracks trimmed range. Build a gap to fill the
-//         // space and call it a day
-//         //
-//         TimeRange range = track->available_range(otio_error.get());
-//         if (*(otio_error.get())) {
-//             *error_status = ErrorStatus(otio_error);
-//             return {};
-//         }
+} // anon utility namespace
 
-//         RationalTime start = range.end_time_exclusive();
-//         RetainedItem retainer = get_fill();
-//         if (*error_status)
-//             return {};
+/* -------------------------------------------------------------------------- */
 
-//         Item* fill = retainer.value;
-//         fill->set_source_range(range);
+EventStack* overwrite(Item* item,
+                      Track* track,
+                      optional<RationalTime> const& track_time,
+                      ErrorStatus *error_status,
+                      Item* fill_template,
+                      bool preview)
+{
+    auto item_range = item->source_range();
+    if (!item_range) {
+        *error_status = ErrorStatus::INVALID_TIME_RANGE;
+        return nullptr;
+    }
 
-//         events.push_back(EditEvent::create(
-//             track,
-//             fill,
-//             EditEventKind::append
-//         ));
-//         events.push_back(EditEvent::create(
-//             track,
-//             child,
-//             EditEventKind::append
-//         ));
-//     }
-//     else {
+    TimeRange place_range = TimeRange(trace_time, (*item_range).duration());
+    auto intersections = get_intersections(track, place_range, error_status);
+    if (*error_status)
+        return nullptr;
 
-//         //
-//         // -- This combination is the state driver for an action when we
-//         // have to modify the children of our composition.
-//         //
-//         // For each of the intersections, based on the type of placement
-//         // requested, we handle accordingly.
-//         //
-//         TimeRange default_range = TimeRange(RationalTime{ 0, 1 }, RationalTime{ 1, 1 }); // Kill this with fire
+    std::unique_ptr<EventStack> stack(new EventStack({}, "overwrite"));
 
-//         if (placement == PlacementKind::overwrite) {
-//             //
-//             // -- First up, the overwrite command. This just blindly destroys
-//             // anything it overlaps. This can potentially mean splitting an
-//             // item in two or wiping out a child all together.
-//             //
-//             for (Intersection &intersect: intersections) {
-//                 switch (intersect.type)
-//                 {
-//                 case Intersection::Eclipse:
-//                 {
-//                     events.push_back(EditEvent::create(
-//                         track,
-//                         intersect.item,
-//                         EditEventKind::remove
-//                     ));
-//                     break;
-//                 }
-//                 case Intersection::SingleEdgeLeft:
-//                 case Intersection::SingleEdgeRight:
-//                 {
-//                     TimeRange use_range = intersect.source_range_right.value_or(default_range);
-//                     if (intersect.type == Intersection::SingleEdgeLeft)
-//                         use_range = intersect.source_range_left.value_or(default_range);
+    // __TODO__ Fill me in
 
-//                     events.push_back(EditEvent::create(
-//                         track,
-//                         intersect.item,
-//                         EditEventKind::modify,
-//                         -1,
-//                         use_range
-//                     ));
-//                     break;
-//                 }
-//                 case Intersection::SplitTake:
-//                 {
-//                     auto split = intersect.item.value->clone(otio_error.get());
-//                     if (*(otio_error.get())) {
-//                         *error_status = ErrorStatus(otio_error);
-//                         return {};
-//                     }
-//                     Item* cloned_item = static_cast<Item*>(split);
+    if (!preview) {
+        stack->run(error_status);
+        if (*error_status) {
+            return nullptr;
+        }
+    }
+    return stack.release();
+}
 
-//                     int index = track->_index_of_child(intersect.item, otio_error.get());
-//                     if (*(otio_error.get())) {
-//                         *error_status = ErrorStatus(otio_error);
-//                         return {};
-//                     }
-
-//                     events.push_back(EditEvent::create(
-//                         track,
-//                         intersect.item,
-//                         EditEventKind::modify,
-//                         -1,
-//                         intersect.source_range_left
-//                     ));
-//                     events.push_back(EditEvent::create(
-//                         track,
-//                         child,
-//                         EditEventKind::insert,
-//                         index + 1
-//                     ));
-//                     events.push_back(EditEvent::create(
-//                         track,
-//                         cloned_item,
-//                         EditEventKind::insert,
-//                         index + 2,
-//                         intersect.source_range_right
-//                     ));
-//                     break;
-//                 }
-//                 case Intersection::None:
-//                 default:
-//                     break;
-//                 }
-//             }
-//         }
-//         else if (placement == PlacementKind::insert) {
-//             //
-//             // -- Next is the predicated insertion. This will insert the
-//             // item and shift _anything_ that it overlaps. This can also
-//             // result in a split item.
-//             //
-//             Intersection &intersect = intersections[0]; // Empty handled above
-//             TimeRange composable_range = intersect.item.value->source_range().value_or(default_range);
-
-//             int index = track->_index_of_child(intersect.item, otio_error.get());
-//             if (*(otio_error.get())) {
-//                 *error_status = ErrorStatus(otio_error);
-//                 return {};
-//             }
-
-//             if (intersect.type == Intersection::Eclipse ||
-//                 intersect.type == Intersection::SingleEdgeRight ||
-//                 place_range.start_time() <= composable_range.start_time())
-//             {
-//                 events.push_back(EditEvent::create(
-//                     track,
-//                     child,
-//                     EditEventKind::insert,
-//                     index
-//                 ));
-//             }
-//             else { // SingleEdgeLeft || SplitTake
-//                 events.push_back(EditEvent::create(
-//                     track,
-//                     child,
-//                     EditEventKind::insert,
-//                     index + 1
-//                 ));
-
-//                 if (at_time < composable_range.end_time_exclusive())
-//                 {
-//                     auto split = intersect.item.value->clone(otio_error.get());
-//                     if (*(otio_error.get())) {
-//                         *error_status = ErrorStatus(otio_error);
-//                         return {};
-//                     }
-
-//                     RetainedItem newitem = static_cast<Item*>(split);
-
-//                     // FIXME: Need a better way to assert values...
-//                     TimeRange split_source_range = TimeRange(
-//                         (*intersect.source_range_left).end_time_exclusive(),
-//                         composable_range.duration() - (*intersect.source_range_left).duration()
-//                     );
-
-//                     events.push_back(EditEvent::create(
-//                         track,
-//                         child,
-//                         EditEventKind::modify,
-//                         -1,
-//                         intersect.source_range_left
-//                     ));
-//                     events.push_back(EditEvent::create(
-//                         track,
-//                         newitem,
-//                         EditEventKind::insert,
-//                         index + 2
-//                     ));
-//                 }
-//             }
-//         }
-//     }
-
-//     if (events.size() && !preview)
-//     {
-//         decltype(events) completed;
-
-//         for (EditEventPtr event : events) {
-//             event->run(error_status);
-//             if (*error_status) {
-//                 for (auto it = completed.rbegin(); it != completed.rend(); ++it)
-//                     (*it)->revert();
-//                 return {};
-//             }
-//             completed.push_back(event);
-//         }
-//     }
-
-//     return events;
-
-// }
-
-
-// }}
+} }

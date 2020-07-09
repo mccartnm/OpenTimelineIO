@@ -20,6 +20,16 @@ EventStack::EventStack(std::vector<Event*> const& events,
 {
 }
 
+EventStack::~EventStack()
+{
+    while (_events.size() > 0) {
+        auto beg = _events.begin();
+        Event* event = (*beg).value;
+        event->possibly_delete();
+        _events.erase(beg);
+    }
+}
+
 void EventStack::add_event(RetainedEvent event) {
     _events.push_back(event);
 }
@@ -30,7 +40,7 @@ void EventStack::forward(ErrorStatus *error_status) {
     for (; event_it != _events.end(); event_it++) {
         (*event_it).value->run(error_status);
 
-        if (!error_status && event_it != _events.begin()) {
+        if (*error_status && event_it != _events.begin()) {
             std::reverse_iterator<decltype(event_it)> revent_it(event_it - 1);
             std::unique_ptr<ErrorStatus> rev_error(new ErrorStatus());
 
@@ -49,15 +59,15 @@ void EventStack::reverse(ErrorStatus *error_status) {
     auto event_it = _events.rbegin();
 
     for (; event_it != _events.rend(); event_it++) {
-        (*event_it).value->run(error_status);
+        (*event_it).value->revert(error_status);
 
-        if (!error_status && event_it != _events.rbegin()) {
+        if (*error_status && event_it != _events.rbegin()) {
             // Reverse a reverse iterator...
             decltype(_events)::iterator fevent_it = make_forward(event_it + 1);
             std::unique_ptr<ErrorStatus> fev_error(new ErrorStatus());
 
             for (; fevent_it != _events.end(); fevent_it++) {
-                (*fevent_it).value->revert(fev_error.get());
+                (*fevent_it).value->run(fev_error.get());
                 if (!fev_error.get()) {
                     return;
                 }

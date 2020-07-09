@@ -16,6 +16,7 @@ public:
     EventStack(std::vector<Event*> const& events = std::vector<Event*>(),
                std::string const& name = std::string(),
                AnyDictionary const& metadata = AnyDictionary());
+    virtual ~EventStack();
 
     void add_event(RetainedEvent event);
 

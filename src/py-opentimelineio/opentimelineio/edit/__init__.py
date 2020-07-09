@@ -22,9 +22,12 @@
 # language governing permissions and limitations under the Apache License.
 #
 
-"""Event system for OTIO"""
+"""Edit system for OTIO"""
 
-from .. _otio import ( # noqa
-    Event,
-    EventStack,
+# Basic Events
+from .. _otio import (
+    ItemEdit,
+    InsertItemEdit,
+    RemoveItemEdit,
+    ModifyItemSourceRangeEdit,
 )

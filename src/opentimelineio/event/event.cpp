@@ -13,14 +13,30 @@ Event::Event(std::string const& name, AnyDictionary const& metadata)
 
 
 void Event::run(ErrorStatus *error_status) {
+    if (_has_run) {
+        *error_status = ErrorStatus::INVALID_EXECUTION_ORDER;
+        return;
+    }
+    if (!_validate(error_status)) {
+        return;
+    }
     forward(error_status);
-    if (!error_status)
+    if (!(*error_status))
         _has_run = true;
 }
 
 void Event::revert(ErrorStatus *error_status) {
+    if (!_has_run) {
+        *error_status = ErrorStatus::INVALID_EXECUTION_ORDER;
+        return;
+    }
+
+    if (!_validate(error_status)) {
+        return;
+    }
+
     reverse(error_status);
-    if (!error_status)
+    if (!(*error_status))
         _has_run = false;
 }
 

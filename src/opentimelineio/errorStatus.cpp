@@ -52,8 +52,8 @@ std::string ErrorStatus::outcome_to_string(Outcome o) {
         return "cannot compute duration on this type of object";
     case CANNOT_TRIM_TRANSITION:
         return "cannot trim transition";
-    case UNKOWN_EVENT_TYPE:
-        return "unknown event type";
+    case INVALID_EXECUTION_ORDER:
+        return "invalid execution order";
     default:
         return "unknown/illegal ErrorStatus::Outcome code";
     };
