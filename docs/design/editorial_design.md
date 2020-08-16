@@ -640,6 +640,6 @@ for (EditEvent &event: events) {
 ## Overall
 Many of the commands mentioned have common code paths and math that is required. We can streamline many of the placement commands into a single call with different options. We can then expose that as a raw edit platform while giving users the common algorithms for ease-of-use.
 
-As an example, the `overrwrite` and `insert` commands require intersection information and handle the case of placing an item passed the current track's duration in the same manner. Having a standard, atomic means of editing, allows us to cut down on duplicated code.
+As an example, the `overwrite` and `insert` commands require intersection information and handle the case of placing an item passed the current track's duration in the same manner. Having a standard, atomic means of editing, allows us to cut down on duplicated code.
 
 > This will also take some tinkering to make sure we're not generating monolithic functions.

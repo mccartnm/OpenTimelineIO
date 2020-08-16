@@ -7,31 +7,118 @@
 
 namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 
-// using RetainedItem = SerializableObject::Retainer<Item>;
-// using RetainedComposition = SerializableObject::Retainer<Composition>;
-// using RetainedComposable = SerializableObject::Retainer<Composable>;
-// using RetainedEvent = SerializableObject::Retainer<Event>;
+using RetainedItem = SerializableObject::Retainer<Item>;
+using RetainedComposition = SerializableObject::Retainer<Composition>;
+using RetainedComposable = SerializableObject::Retainer<Composable>;
+using RetainedEvent = SerializableObject::Retainer<Event>;
 
-// struct PlacementKind
-// {
-//     static auto constexpr overwrite = "Overwrite";  //< Overwrite existing items
-//     static auto constexpr insert = "Insert";        //< Shift everything
-//     // static auto constexpr fill = "InFill";          //< Fill in a gap based on the in point
-//     // static auto constexpr fill_out = "OutFill";     //< Fill in a gap based on the out point
-//     // static auto constexpr fail = "Fail";            //< Fail if non-gap contact made
-// };
+/*
+    An intersection utility with ranges that correspond based
+    on the IntersectionType.
+*/
+struct Intersection
+{
+    enum IntersectionType {
+        None = -1,          //< covers "all before", "all after", and "meets"
+        Contains,           //< range contains other item
+        Contained,          //< range is contained by an item
+        OverlapBefore,      //< range overlaps item and (starts before or begins)
+        OverlapAfter,       //< range overlaps item and (ends after or finishes)
+    };
 
-// EditEvents place(
-//         Item* child,
-//         Track* track,
-//         RationalTime const& at,
-//         ErrorStatus* error_status,
-//         std::string const& placement = PlacementKind::overwrite,
-//         RetainedItem fill_template = nullptr,
-//         bool preview = false);
+    IntersectionType type;
+    Item *item;
+    int index;
+    optional<TimeRange> source_range_before;
+    optional<TimeRange> source_range_after;
+
+    Intersection(
+        IntersectionType t,
+        Item *i,
+        int idx,
+        optional<TimeRange> source_before = nullopt,
+        optional<TimeRange> source_after = nullopt)
+        : type(t)
+        , item(i)
+        , index(idx)
+        , source_range_before(source_before)
+        , source_range_after(source_after)
+        {}
+
+    ~Intersection() {}
+};
+using Intersections = std::vector<Intersection>;
+
+Intersections get_intersections(
+        Track *track,
+        TimeRange const& track_range,
+        ErrorStatus* error_status,
+        int count = -1);
 
 
-/* Place a composable item onto a composition at a given RationalTime */
+/**
+ * Overwrite items on a track with another item. This will remove, trim, or
+ * fill where required to completely set the item at the given track_time
+ *
+ *   let item = C
+ *   let track_item = 10 @ 24
+ *
+ *   ---
+ *   1 - Item overlaps "GAP" and "A", contains "B"
+ *
+ *           [0        C         40]
+ *   0       |                                     N
+ *   | ------------------------------------------- |
+ *   | [0    GAP  20][0  B  10][0     A    30]     |
+ *   | ------------------------------------------- |
+ *   
+ *  RESULT
+ *      - "C" inserted after "GAP"
+ *      - "B" Removed
+ *      - "GAP" duration changed
+ *      - "A" source start + duration changed
+ *   | ------------------------------------------- |
+ *   | [GAP ][0       C        40][10  A  30]      |
+ *   | ------------------------------------------- |
+ *
+ *   ---
+ *   2 - Item is contained by track item "A"
+ *
+ *           [0        C         40]
+ *   0       |                                     N
+ *   | ------------------------------------------- |
+ *   | [0               A                50]       |
+ *   | ------------------------------------------- |
+ *
+ *   RESULT
+ *       - "A" split at track_time (See documentation below for procedure)
+ *       - "A'" source_range start = "A" source_range end + "C" duration
+ *       - "C" inserted after "A"
+ *   | ------------------------------------------- |
+ *   | [ A 10][0        C         40][40 A' ]      |
+ *   | ------------------------------------------- |
+ *
+ *   ---
+ *   3 - Item is passed tracks current duration
+ *           [0        C         40]
+ *   0       |                                     N
+ *   | ------------------------------------------- |
+ *   | <nothing>                                   |
+ *   | ------------------------------------------- |
+ *
+ *   RESUT
+ *       - Fill template cloned to fill empty space
+ *   | ------------------------------------------- |
+ *   | [ FILL ][0        C         40]             |
+ *   | ------------------------------------------- |
+ *
+ * @param item
+ * @param track
+ * @param track_time
+ * @param error_status
+ * @param fill_template
+ * @param preview
+ */
 EventStack* overwrite(Item* item,
                       Track* track,
                       optional<RationalTime> const& track_time,

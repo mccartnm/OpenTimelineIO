@@ -24,10 +24,18 @@
 
 """Edit system for OTIO"""
 
-# Basic Events
+# Edit Utilitis
 from .. _otio import (
+
+    # Events
     ItemEdit,
     InsertItemEdit,
     RemoveItemEdit,
     ModifyItemSourceRangeEdit,
+
+    # Utils
+    Intersection,
+
+    # Basic Edit Commands
+    overwrite
 )

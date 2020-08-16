@@ -10,6 +10,8 @@
 #include "opentimelineio/edit/removeItemEdit.h"
 #include "opentimelineio/edit/modifyItemSourceRange.h"
 
+#include "opentimelineio/edit/editAlgorithms.h"
+
 #include "otio_errorStatusHandler.h"
 #include "otio_utils.h"
 
@@ -95,7 +97,60 @@ static void define_edit_events(py::module m) {
 }
 
 
+static void define_edit_commands(py::module m) {
+
+    auto intersect = py::class_<Intersection>(m, "Intersection");
+
+    // Build an enum for the types of intersections
+	py::enum_<Intersection::IntersectionType>(intersect, "Type")
+		.value("None", Intersection::IntersectionType::None)
+		.value("Contains", Intersection::IntersectionType::Contains)
+		.value("Contained", Intersection::IntersectionType::Contained)
+		.value("OverlapBefore", Intersection::IntersectionType::OverlapBefore)
+		.value("OverlapAfter", Intersection::IntersectionType::OverlapAfter);
+
+    intersect
+        .def_readonly("type", &Intersection::type)
+        .def_readonly("item", &Intersection::item)
+        .def_readonly("index", &Intersection::index)
+        .def_readonly("source_range_before", &Intersection::source_range_before)
+        .def_readonly("source_range_after", &Intersection::source_range_after)
+        .def_static("get_intersections", [](Track *track, TimeRange const& track_range, int count) {
+                                            return get_intersections(
+                                                track,
+                                                track_range,
+                                                ErrorStatusHandler(),
+                                                count
+                                            );
+                                        },
+            "track"_a,
+            "track_range"_a,
+            "count"_a = -1
+        );
+
+
+    m.def("overwrite", [](Item *item,
+                          Track *track,
+                          RationalTime track_time,
+                          Item *fill_template) {
+                            return overwrite(
+                                item,
+                                track,
+                                track_time,
+                                ErrorStatusHandler(),
+                                fill_template,
+                                /*preview=*/false
+                            );
+                            },
+            "item"_a,
+            "track"_a,
+            "track_time"_a,
+            "fill_template"_a = nullptr);
+}
+
+
 void otio_event_bindings(py::module m) {
     define_event(m);
     define_edit_events(m);
+    define_edit_commands(m);
 }
