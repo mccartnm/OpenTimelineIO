@@ -90,7 +90,7 @@ class BasicEventTests(unittest.TestCase, otio_test_utils.OTIOAssertions):
 
 class EditCommandTests(unittest.TestCase, otio_test_utils.OTIOAssertions):
     """
-    Test the variable edit events
+    Test the variable edit events - probably move to it's on file
     """
     def setUp(self):
         self.track = otio.schema.Track(name="V1")
@@ -102,10 +102,41 @@ class EditCommandTests(unittest.TestCase, otio_test_utils.OTIOAssertions):
             RationalTime(10, 24)
         ))
 
-    def test_overwrite(self):
-        self.clip.source_range = TimeRange(
-            RationalTime(1, 24), RationalTime(25, 24)
+    def tr(self, start, dur):
+        return TimeRange(RationalTime(start, 24), RationalTime(dur, 24))
+
+    def test_intersections(self):
+        Intersection = otio.edit.Intersection
+
+        self.clip.source_range = self.tr(1, 20)
+        self.track.append(self.clip)
+
+        c2 = self.new_clip('c2')
+        self.track.append(c2)
+
+        #        |                  | <- track_range
+        # [  self.clip  ][  c2  ]
+        intersections = Intersection.get_intersections(
+            self.track,
+            track_range=self.tr(10, 25)
         )
+
+        # -- This should result it 2 intersections
+        self.assertEqual(len(intersections), 2)
+        self.assertEqual(intersections[0].item, self.clip)
+
+        self.assertEqual(intersections[0].type,
+                         Intersection.Type.OverlapAfter)
+        # The range of our current clip that exists before
+        # the overlap.
+        self.assertEqual(intersections[0].source_range_before,
+                         self.tr(1, 10))
+
+        self.assertEqual(intersections[1].type,
+                         Intersection.Type.Contains)
+
+    def test_overwrite(self):
+        self.clip.source_range = self.tr(1, 25)
         self.assertEqual(self.clip.source_range.duration, RationalTime(25, 24))
         self.track.append(self.clip)
 
@@ -133,9 +164,7 @@ class EditCommandTests(unittest.TestCase, otio_test_utils.OTIOAssertions):
 
 
     def test_insert(self):
-        self.clip.source_range = TimeRange(
-            RationalTime(1, 24), RationalTime(25, 24)
-        )
+        self.clip.source_range = self.tr(1, 25)
 
         self.track.append(self.clip)
 
@@ -164,3 +193,22 @@ class EditCommandTests(unittest.TestCase, otio_test_utils.OTIOAssertions):
         self.assertEqual(type(self.track[2]), otio.schema.Clip)
         self.assertEqual(type(self.track[3]), otio.schema.Gap)
         self.assertEqual(len(self.track), 5)
+
+
+    def test_souce_range_invalid(self):
+        """
+        We cannot perform most edit actions when source range is
+        not defined
+        """
+        self.assertRaises(
+            ValueError,
+            lambda: otio.edit.overwrite(self.clip, self.track, RationalTime(10, 24))
+        )
+        # Validate that nothing about our track changed
+        self.assertEqual(len(self.track), 0)
+
+        self.assertRaises(
+            ValueError,
+            lambda: otio.edit.insert(self.clip, self.track, RationalTime(10, 24))
+        )
+        self.assertEqual(len(self.track), 0)
