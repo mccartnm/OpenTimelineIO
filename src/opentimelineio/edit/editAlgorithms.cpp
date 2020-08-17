@@ -418,12 +418,9 @@ EventStack* insert(Item* item,
     if (*error_status)
         return nullptr;
 
-    std::unique_ptr<EventStack> stack(new EventStack({}, "overwrite"));
+    std::unique_ptr<EventStack> stack(new EventStack({}, "insert"));
 
     if (intersections.size() == 0) {
-        //
-        // Same operation as overwrite - probably should lift out
-        //
         bool ok = edit_util::push_fill(
 			stack.get(), track, item, fill_template, place_range, error_status
 		);

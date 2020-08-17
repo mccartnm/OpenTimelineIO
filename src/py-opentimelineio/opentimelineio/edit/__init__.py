@@ -26,7 +26,6 @@
 
 # Edit Utilitis
 from .. _otio import (
-
     # Events
     ItemEdit,
     InsertItemEdit,
@@ -37,5 +36,6 @@ from .. _otio import (
     Intersection,
 
     # Basic Edit Commands
-    overwrite
+    overwrite,
+    insert
 )

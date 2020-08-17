@@ -53,7 +53,7 @@ class BasicEventTests(unittest.TestCase, otio_test_utils.OTIOAssertions):
 
     def test_insert_item(self):
         insert_item = otio.edit.InsertItemEdit(
-            name='insert_yo', item=self.clip, track=self.track
+            name='insert_me', item=self.clip, track=self.track
         )
         insert_item.run()
         self.assertEqual(len(self.track), 1)
@@ -62,7 +62,7 @@ class BasicEventTests(unittest.TestCase, otio_test_utils.OTIOAssertions):
         self.track.append(self.clip)
         self.assertEqual(self.track[0], self.clip)
         remove = otio.edit.RemoveItemEdit(
-            name='remove_yo', item=self.clip
+            name='remove_me', item=self.clip
         )
         remove.run()
         self.assertEqual(len(self.track), 0)
@@ -78,10 +78,13 @@ class BasicEventTests(unittest.TestCase, otio_test_utils.OTIOAssertions):
             name='foo', index=0, track=self.track, item=self.clip
         )
         stack.add_event(insert_item)
-
         stack.run()
         self.assertEqual(len(self.track), 1)
         self.assertEqual(self.track[0].source_range, self.range_)
+
+        # For now
+        stack.revert()
+        self.assertEqual(len(self.track), 0)
 
 
 
@@ -103,10 +106,61 @@ class EditCommandTests(unittest.TestCase, otio_test_utils.OTIOAssertions):
         self.clip.source_range = TimeRange(
             RationalTime(1, 24), RationalTime(25, 24)
         )
+        self.assertEqual(self.clip.source_range.duration, RationalTime(25, 24))
         self.track.append(self.clip)
 
         # -- First, we test with placing passed all existing content
-        c2 = self.new_clip("passed")
-        otio.edit.overwrite(c2, self.track, track_time=RationalTime(40, 24))
+        c2 = self.new_clip("c2")
+        otio.edit.overwrite(c2, self.track, RationalTime(40, 24))
 
-        self.assertEqual(len(self.track), 3) # Account for the Gap
+        gap = self.track[1]
+        self.assertEqual(gap.duration(), RationalTime(15, 24))
+
+        #
+        #             [   c3   ]
+        # [  self.clip  ][      Gap     ][  c2  ]
+        #           ↓        ↓        ↓
+        # [self.clip ][   c3   ][  Gap  ][  c2  ]
+        #
+        c3 = self.new_clip("c3")
+        otio.edit.overwrite(c3, self.track, track_time=RationalTime(20, 24))
+
+        # We've cut back the clip source_range
+        self.assertEqual(self.clip.source_range.duration, RationalTime(20, 24))
+        self.assertEqual(len(self.track), 4)
+
+        self.assertEqual(gap.duration(), RationalTime(10, 24))
+
+
+    def test_insert(self):
+        self.clip.source_range = TimeRange(
+            RationalTime(1, 24), RationalTime(25, 24)
+        )
+
+        self.track.append(self.clip)
+
+        # -- First, we test with inserting passed all existing content
+        # This should have the same effect as overwrite
+        c2 = self.new_clip("c2")
+        otio.edit.insert(c2, self.track, RationalTime(40, 24))
+
+        # [  self.clip  ][      Gap     ][  c2  ]
+        self.assertEqual(len(self.track), 3)
+        self.assertTrue(isinstance(self.track[1], otio.schema.Gap))
+
+        #
+        #             [   c3   ]
+        # [  self.clip  ][      Gap     ][  c2  ]
+        #           ↓        ↓        ↓
+        # [self.clip ][   c3   ][  ][     Gap     ][  c2  ]
+        #                        ^=self.clip
+        #
+        c3 = self.new_clip("c3")
+        otio.edit.insert(c3, self.track, track_time=RationalTime(20, 24))
+
+        # We've effectively "sliced" the self.clip and pushed it
+        # down the timeline
+        self.assertEqual(self.clip.source_range.duration, RationalTime(20, 24))
+        self.assertEqual(type(self.track[2]), otio.schema.Clip)
+        self.assertEqual(type(self.track[3]), otio.schema.Gap)
+        self.assertEqual(len(self.track), 5)

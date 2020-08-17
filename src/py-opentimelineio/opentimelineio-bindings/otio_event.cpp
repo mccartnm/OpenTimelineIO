@@ -132,20 +132,43 @@ static void define_edit_commands(py::module m) {
     m.def("overwrite", [](Item *item,
                           Track *track,
                           RationalTime track_time,
-                          Item *fill_template) {
+                          Item *fill_template,
+                          bool preview) {
                             return overwrite(
                                 item,
                                 track,
                                 track_time,
                                 ErrorStatusHandler(),
                                 fill_template,
-                                /*preview=*/false
+                                preview
                             );
                             },
             "item"_a,
             "track"_a,
             "track_time"_a,
-            "fill_template"_a = nullptr);
+            "fill_template"_a = nullptr,
+            "preview"_a = false);
+
+
+    m.def("insert", [](Item *item,
+                       Track *track,
+                       RationalTime track_time,
+                       Item *fill_template,
+                       bool preview) {
+                         return insert(
+                             item,
+                             track,
+                             track_time,
+                             ErrorStatusHandler(),
+                             fill_template,
+                             preview
+                         );
+                         },
+            "item"_a,
+            "track"_a,
+            "track_time"_a,
+            "fill_template"_a = nullptr,
+            "preview"_a = false);
 }
 
 

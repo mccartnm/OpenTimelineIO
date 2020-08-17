@@ -129,7 +129,9 @@ EventStack* overwrite(Item* item,
 
 
 /**
- * Insert an item at a given time. This will 
+ * Insert an item at a given time. This will slice and push items
+ * as required to make sure the item starts at the specified time.
+ * No content is removed.
  *
  *    let item = C
  *    let track_time = 10 @ 24
