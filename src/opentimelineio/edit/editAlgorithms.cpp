@@ -14,6 +14,72 @@
 
 namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 
+
+namespace edit_util {
+
+
+bool push_fill(EventStack *stack,
+               Track* track,
+               Item* item,
+               Item* fill_template,
+               const TimeRange &place_range,
+		       ErrorStatus *error_status)
+{
+    Gap::Retainer<Gap> g = nullptr;
+    if (!fill_template) {
+        g = new Gap();
+        fill_template = g;
+    }
+
+    Item *fill = dynamic_cast<Item*>(fill_template->clone(error_status));
+    if (*error_status || !fill)
+        return false;
+
+    // VERIFY: Does this get affected by transitions/effects
+    RationalTime end_of_current = track->available_range(error_status).end_time_exclusive();
+    if (*error_status)
+        return false;
+
+    fill->set_source_range(TimeRange(
+        RationalTime(0, end_of_current.rate()),
+        place_range.start_time() - end_of_current
+    ));
+
+    int index = (int)track->children().size();
+    stack->add_event(new InsertItemEdit(index++, track, fill));
+    stack->add_event(new InsertItemEdit(index, track, item));
+    return true;
+}
+
+
+bool slice_and_gen(int insertion_index,
+                   Track* track,
+                   EventStack *stack,
+                   const Intersection &intersection,
+                   ErrorStatus *error_status)
+{
+    stack->add_event(new ModifyItemSourceRangeEdit(
+            intersection.item,
+            intersection.source_range_before
+    ));
+
+    // TODO: This will need massaging for ID system and naming
+    // FIXME: Do we also need to be careful with effects and transitions?
+    Item *duplicate = dynamic_cast<Item*>(intersection.item->clone(error_status));
+    if (*error_status || !duplicate)
+        return false;
+
+    stack->add_event(new InsertItemEdit(insertion_index, track, duplicate));
+    stack->add_event(new ModifyItemSourceRangeEdit(
+            duplicate,
+            intersection.source_range_after
+    ));
+    return true;
+}
+
+} // edit_util
+
+
 /*
     Obtain the Intersections of a given time range on a track. This is excellent for
     edit commands as it can define the items affected by a time range which is the
@@ -105,31 +171,29 @@ Intersections get_intersections(
             /*
                 This child completely covers the track_range. Handle three cases
 
-source_before ->|  |                 | |<- source_after
-                   [   track_range  ]       - child_range start is before track_range start
-                [    child_range      ]     - child_range end is after track_range end
+            source_before        source_after
+                 ↓                    ↓
+                | |[   track_range  ]| |    - child_range start is before track_range start
+                [    child_range       ]    - child_range end is after track_range end
 
                       - OR -
 
-              begins
-                ↓                |  |<- source_after
-                [  track_range  ]           - child_range start begins track_range
-                [   child_range     ]       - child_range end is after track_range end
+              begins        source_after
+                ↓                 ↓
+                [  track_range  ]| |        - child_range start begins track_range
+                [   child_range    ]        - child_range end is after track_range end
 
                       - OR -
 
-                                 finishes
-source_before ->|  |                ↓
-                   [  track_range   ]       - child_range start is before track_range
+            source_before        finishes
+                 ↓                  ↓
+                | |[  track_range   ]       - child_range start is before track_range
                 [      child_range  ]       - child_range end finishes track_range
             */
 
             contact = true;
             Intersection::IntersectionType type = Intersection::Contained;
 
-            // WARNING:
-            // This is iffy at best. Needs proofing
-            //
             TimeRange source_before = TimeRange(
                 child_source_range.start_time(),
                 (track_range.start_time() - child_range.start_time())
@@ -160,14 +224,16 @@ source_before ->|  |                ↓
                 The track range overlaps the child range in some way. This covers the rest
                 of the cases _except_ for the case of Intersection::None
 
-                                 |    |<- source_after
-                [  track_range  ]           - child_range start is after track_range start
-                    [    child_range  ]         and before track_range end
-                                            - child_range end is after track_range
+                              source_after
+                                  ↓
+                [  track_range  ]| |      - child_range start is after track_range start
+                    [  child_range ]         and before track_range end
+                                          - child_range end is after track_range
                       - OR -
 
-source_before ->|   |
-                    [  track_range  ]       - child_range start is 
+            source_before
+                 ↓
+                | |[  track_range  ]       - child_range start is 
                 [  child_range   ]
             */
             contact = true;
@@ -214,8 +280,12 @@ source_before ->|   |
             */
             if (contact)
                 break; // Passed all intersections
+
         }
 
+        if (contact && count > 0 && --count == 0) {
+            break; // We have all we care to look for
+        }
     }
 	return intersections;
 }
@@ -243,8 +313,15 @@ EventStack* overwrite(Item* item,
     std::unique_ptr<EventStack> stack(new EventStack({}, "overwrite"));
 
     if (intersections.size() == 0) {
-        // Short circuit means of using the fill template to 
-        // TODO
+        //
+        // Use the fill template (or Gap) to pad the track with something until
+        // this item is meant to appear
+        //
+        bool ok = edit_util::push_fill(
+			stack.get(), track, item, fill_template, place_range, error_status
+		);
+        if (!ok)
+            return nullptr;
     }
     else {
         int insertion_index = -1;
@@ -268,24 +345,16 @@ EventStack* overwrite(Item* item,
                 // In this event, there should be both a source_before and source_after
                 // Therefore, we must duplicate the current item, adjust the SR of the
                 // initial, and insert it's duplicate after the up-coming item
-
                 insertion_index++; // New item comes _after_ the intersected item
-                stack->add_event(new ModifyItemSourceRangeEdit(
-                        intersection.item,
-                        intersection.source_range_before
-                ));
-
-                // TODO: This will need massaging for ID system and naming
-                // FIXME: Do we also need to be careful with effects and transitions?
-                Item *duplicate = dynamic_cast<Item*>(intersection.item->clone(error_status));
-                if (*error_status || !duplicate)
+                bool ok = edit_util::slice_and_gen(
+                    insertion_index,
+					track,
+                    stack.get(),
+                    intersection,
+                    error_status
+                );
+                if (!ok)
                     return nullptr;
-
-                stack->add_event(new InsertItemEdit(insertion_index, track, duplicate));
-                stack->add_event(new ModifyItemSourceRangeEdit(
-                        duplicate,
-                        intersection.source_range_after
-                ));
                 break;
             }
             case Intersection::OverlapBefore:
@@ -324,5 +393,84 @@ EventStack* overwrite(Item* item,
     }
     return stack.release();
 }
+
+
+
+EventStack* insert(Item* item,
+                   Track* track,
+                   optional<RationalTime> const& track_time,
+                   ErrorStatus *error_status,
+                   Item* fill_template,
+                   bool preview)
+{
+    auto item_range = item->source_range();
+    if (!item_range) {
+        *error_status = ErrorStatus::INVALID_TIME_RANGE;
+        return nullptr;
+    }
+
+    auto ttime = track_time.value();
+    TimeRange place_range = TimeRange(ttime, RationalTime(1, ttime.rate()));
+
+    Intersections intersections = get_intersections(
+        track, place_range, error_status, /*count=*/1
+    );
+    if (*error_status)
+        return nullptr;
+
+    std::unique_ptr<EventStack> stack(new EventStack({}, "overwrite"));
+
+    if (intersections.size() == 0) {
+        //
+        // Same operation as overwrite - probably should lift out
+        //
+        bool ok = edit_util::push_fill(
+			stack.get(), track, item, fill_template, place_range, error_status
+		);
+        if (!ok)
+            return nullptr;
+
+    } else {
+
+        const Intersection &intersection = intersections[0];
+        int insertion_index = intersection.index;
+
+        switch (intersection.type)
+        {
+        case Intersection::Contained:
+        case Intersection::OverlapAfter:
+        {
+            // We have to split an item, and shift everything else
+            insertion_index++;
+            bool ok = edit_util::slice_and_gen(
+                insertion_index,
+				track,
+                stack.get(),
+                intersection,
+                error_status
+            );
+            if (!ok)
+                return nullptr;
+            break;
+        }
+        case Intersection::Contains:
+        case Intersection::OverlapBefore:
+        case Intersection::None:
+            break;
+        }
+
+        // We'll always insert the item for overwrite
+        stack->add_event(new InsertItemEdit(insertion_index, track, item));
+    }
+
+	if (!preview) {
+		stack->run(error_status);
+		if (*error_status) {
+			return nullptr;
+		}
+	}
+    return stack.release();
+}
+
 
 } }

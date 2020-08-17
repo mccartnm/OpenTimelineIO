@@ -61,7 +61,7 @@ Intersections get_intersections(
  * fill where required to completely set the item at the given track_time
  *
  *   let item = C
- *   let track_item = 10 @ 24
+ *   let track_time = 10 @ 24
  *
  *   ---
  *   1 - Item overlaps "GAP" and "A", contains "B"
@@ -125,6 +125,59 @@ EventStack* overwrite(Item* item,
                       ErrorStatus *error_status,
                       Item* fill_template = nullptr,
                       bool preview = false);
+
+
+
+/**
+ * Insert an item at a given time. This will 
+ *
+ *    let item = C
+ *    let track_time = 10 @ 24
+ *
+ *    1 - Item overlaps "GAP" and "A", contains "B"
+ *
+ *            [0        C         40]
+ *    0       |                                     N
+ *    | ------------------------------------------- |
+ *    | [0    GAP  20][0  B  10][0     A    30]     |
+ *    | ------------------------------------------- |
+ *    
+ *    RESULT
+ *        - "GAP" split at track_time
+ *        - Existing "GAP" duration reduced
+ *        - New "GAP" duration adjusted to fit the rest
+ *        - "C" inserted into track children after existing GAP
+ *        - "B" and "A" left unchanged
+ *    | ------------------------------------------- |
+ *    | [GAP ][0       C        40][10 GAP 20][0    B ... <continued>
+ *    | ------------------------------------------- |
+ *
+ *
+ *    2 - Item is passed tracks current duration (eqiv to overwrite)
+ *            [0        C         40]
+ *    0       |                                     N
+ *    | ------------------------------------------- |
+ *    | <nothing>                                   |
+ *    | ------------------------------------------- |
+ *
+ *    RESUT - Fill template cloned to fill empty space
+ *    | ------------------------------------------- |
+ *    | [ FILL ][0        C         40]             |
+ *    | ------------------------------------------- |
+ *
+ * @param item
+ * @param track
+ * @param track_time
+ * @param error_status
+ * @param fill_template
+ * @param preview
+ */
+EventStack* insert(Item* item,
+                   Track* track,
+                   optional<RationalTime> const& track_time,
+                   ErrorStatus *error_status,
+                   Item* fill_template = nullptr,
+                   bool preview = false);
 
 
 } }

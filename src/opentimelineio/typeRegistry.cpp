@@ -87,6 +87,7 @@ TypeRegistry::TypeRegistry() {
                               });
 
     // -- Event System
+    register_type<Event>();
     EventRegistry::get().register_events(this);
 }
 
