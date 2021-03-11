@@ -4,8 +4,8 @@ OpenTimelineIO
 ==============
 
 [![Supported VFX Platform Versions](https://img.shields.io/badge/vfx%20platform-2016--2020-lightgrey.svg)](http://www.vfxplatform.com/)
-![Supported Versions](https://img.shields.io/badge/python-2.7%2C%203.6%2C%203.7-blue.svg)
-[![Build Status](https://travis-ci.com/PixarAnimationStudios/OpenTimelineIO.svg?branch=master)](https://travis-ci.com/PixarAnimationStudios/OpenTimelineIO)
+![Supported Versions](https://img.shields.io/badge/python-2.7%2C%203.7%2C%203.8-blue.svg)
+[![Build Status](https://github.com/PixarAnimationStudios/OpenTimelineIO/actions/workflows/python-package.yml/badge.svg)](https://github.com/PixarAnimationStudios/OpenTimelineIO/actions/workflows/python-package.yml)
 [![codecov](https://codecov.io/gh/PixarAnimationStudios/OpenTimelineIO/branch/master/graph/badge.svg)](https://codecov.io/gh/PixarAnimationStudios/OpenTimelineIO)
 [![docs](https://readthedocs.org/projects/opentimelineio/badge/?version=latest)](https://opentimelineio.readthedocs.io/en/latest/index.html)
 
@@ -83,7 +83,7 @@ import opentimelineio as otio
 
 timeline = otio.adapters.read_from_file("foo.aaf")
 for clip in timeline.each_clip():
-  print clip.name, clip.duration()
+  print(clip.name, clip.duration())
 ```
 
 There are more code examples here: https://github.com/PixarAnimationStudios/OpenTimelineIO/tree/master/examples
@@ -108,18 +108,33 @@ You can install development dependencies with `pip install .[dev]`
 
 You can also install the PySide2 dependency with `pip install .[view]`
 
-Currently the code base is written against python 2.7, python 3.6 and 3.7, in keeping 
-with the pep8 style.  We ask that before you submit a pull request, you:
+Currently the code base is written against python2.7, python3.7 and python3.8,
+in keeping with the pep8 style.  We ask that before developers submit pull
+request, they:
 
 - run `make test` -- to ensure that none of the unit tests were broken
-- run `make lint` -- to conform to pep8
+- run `make lint` -- to ensure that coding conventions conform to pep8
 - run `make coverage` -- to detect code which isn't covered
 
 PEP8: https://www.python.org/dev/peps/pep-0008/
 
+Additionaly, to reproduce CI failures regarding the file manifest, run:
+`make manifest` locally to run the python `check-manifest` program.
+
+## C++ Coverage Builds
+
+To enable C++ code coverage reporting via gcov/lcov for builds, set the
+following environment variables:
+
+- `OTIO_CXX_COVERAGE_BUILD=ON`
+- `OTIO_CXX_BUILD_TMP_DIR=path/to/build/dir`
+
+When building/installing through `pip`/`setup.py`, these variables must be set
+before running the install command (`pip install .` for example).
+
 License
 -------
-OpenTimelineIO is open source software. Please see ![LICENSE.txt](LICENSE.txt) for details.
+OpenTimelineIO is open source software. Please see the [LICENSE.txt](LICENSE.txt) for details.
 
 Nothing in the license file or this project grants any right to use Pixar or any other contributor’s trade names, trademarks, service marks, or product names.
 

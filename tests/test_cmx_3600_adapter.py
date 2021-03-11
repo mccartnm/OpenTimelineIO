@@ -27,12 +27,20 @@
 
 # python
 import os
-import tempfile
 import unittest
 
 import opentimelineio as otio
 import opentimelineio.test_utils as otio_test_utils
 from opentimelineio.adapters import cmx_3600
+
+# handle python2 vs python3 difference
+try:
+    from tempfile import TemporaryDirectory  # noqa: F401
+    import tempfile
+except ImportError:
+    # XXX: python2.7 only
+    from backports import tempfile
+
 
 SAMPLE_DATA_DIR = os.path.join(os.path.dirname(__file__), "sample_data")
 SCREENING_EXAMPLE_PATH = os.path.join(SAMPLE_DATA_DIR, "screening_example.edl")
@@ -43,6 +51,7 @@ DISSOLVE_TEST = os.path.join(SAMPLE_DATA_DIR, "dissolve_test.edl")
 DISSOLVE_TEST_2 = os.path.join(SAMPLE_DATA_DIR, "dissolve_test_2.edl")
 DISSOLVE_TEST_3 = os.path.join(SAMPLE_DATA_DIR, "dissolve_test_3.edl")
 GAP_TEST = os.path.join(SAMPLE_DATA_DIR, "gap_test.edl")
+WIPE_TEST = os.path.join(SAMPLE_DATA_DIR, "wipe_test.edl")
 TIMECODE_MISMATCH_TEST = os.path.join(SAMPLE_DATA_DIR, "timecode_mismatch.edl")
 SPEED_EFFECTS_TEST = os.path.join(SAMPLE_DATA_DIR, "speed_effects.edl")
 SPEED_EFFECTS_TEST_SMALL = os.path.join(
@@ -50,6 +59,7 @@ SPEED_EFFECTS_TEST_SMALL = os.path.join(
     "speed_effects_small.edl"
 )
 MULTIPLE_TARGET_AUDIO_PATH = os.path.join(SAMPLE_DATA_DIR, "multi_audio.edl")
+TRANSITION_DURATION_TEST = os.path.join(SAMPLE_DATA_DIR, "transition_duration.edl")
 
 
 class EDLAdapterTest(unittest.TestCase, otio_test_utils.OTIOAssertions):
@@ -309,51 +319,59 @@ V     C        00:00:00:00 00:00:00:05 00:00:00:00 00:00:00:05
         test_edl = SPEED_EFFECTS_TEST_SMALL
         timeline = otio.adapters.read_from_file(test_edl)
 
-        tmp_path = tempfile.mkstemp(suffix=".edl", text=True)[1]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tmp_path = os.path.join(
+                temp_dir,
+                "test_edl_round_trip_disk2mem2disk_speed_effects.edl"
+            )
 
-        otio.adapters.write_to_file(timeline, tmp_path)
+            otio.adapters.write_to_file(timeline, tmp_path)
 
-        result = otio.adapters.read_from_file(tmp_path)
+            result = otio.adapters.read_from_file(tmp_path)
 
-        # When debugging, you can use this to see the difference in the OTIO
-        # otio.adapters.otio_json.write_to_file(timeline, "/tmp/original.otio")
-        # otio.adapters.otio_json.write_to_file(result, "/tmp/output.otio")
-        # os.system("xxdiff /tmp/{original,output}.otio")
+            # When debugging, you can use this to see the difference in the OTIO
+            # otio.adapters.otio_json.write_to_file(timeline, "/tmp/original.otio")
+            # otio.adapters.otio_json.write_to_file(result, "/tmp/output.otio")
+            # os.system("xxdiff /tmp/{original,output}.otio")
 
-        # When debugging, use this to see the difference in the EDLs on disk
-        # os.system("xxdiff {} {}&".format(test_edl, tmp_path))
+            # When debugging, use this to see the difference in the EDLs on disk
+            # os.system("xxdiff {} {}&".format(test_edl, tmp_path))
 
-        # The in-memory OTIO representation should be the same
-        self.assertJsonEqual(timeline, result)
+            # The in-memory OTIO representation should be the same
+            self.assertJsonEqual(timeline, result)
 
     def test_edl_round_trip_disk2mem2disk(self):
         timeline = otio.adapters.read_from_file(SCREENING_EXAMPLE_PATH)
 
-        tmp_path = tempfile.mkstemp(suffix=".edl", text=True)[1]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tmp_path = os.path.join(
+                temp_dir,
+                "test_edl_round_trip_disk2mem2disk.edl"
+            )
 
-        otio.adapters.write_to_file(timeline, tmp_path)
+            otio.adapters.write_to_file(timeline, tmp_path)
 
-        result = otio.adapters.read_from_file(tmp_path)
+            result = otio.adapters.read_from_file(tmp_path)
 
-        # When debugging, you can use this to see the difference in the OTIO
-        # otio.adapters.otio_json.write_to_file(timeline, "/tmp/original.otio")
-        # otio.adapters.otio_json.write_to_file(result, "/tmp/output.otio")
-        # os.system("opendiff /tmp/{original,output}.otio")
+            # When debugging, you can use this to see the difference in the OTIO
+            # otio.adapters.otio_json.write_to_file(timeline, "/tmp/original.otio")
+            # otio.adapters.otio_json.write_to_file(result, "/tmp/output.otio")
+            # os.system("opendiff /tmp/{original,output}.otio")
 
-        original_json = otio.adapters.otio_json.write_to_string(timeline)
-        output_json = otio.adapters.otio_json.write_to_string(result)
-        self.assertMultiLineEqual(original_json, output_json)
+            original_json = otio.adapters.otio_json.write_to_string(timeline)
+            output_json = otio.adapters.otio_json.write_to_string(result)
+            self.assertMultiLineEqual(original_json, output_json)
 
-        # The in-memory OTIO representation should be the same
-        self.assertIsOTIOEquivalentTo(timeline, result)
+            # The in-memory OTIO representation should be the same
+            self.assertIsOTIOEquivalentTo(timeline, result)
 
-        # When debugging, use this to see the difference in the EDLs on disk
-        # os.system("opendiff {} {}".format(SCREENING_EXAMPLE_PATH, tmp_path))
+            # When debugging, use this to see the difference in the EDLs on disk
+            # os.system("opendiff {} {}".format(SCREENING_EXAMPLE_PATH, tmp_path))
 
-        # But the EDL text on disk are *not* byte-for-byte identical
-        with open(SCREENING_EXAMPLE_PATH, "r") as original_file:
-            with open(tmp_path, "r") as output_file:
-                self.assertNotEqual(original_file.read(), output_file.read())
+            # But the EDL text on disk are *not* byte-for-byte identical
+            with open(SCREENING_EXAMPLE_PATH, "r") as original_file:
+                with open(tmp_path, "r") as output_file:
+                    self.assertNotEqual(original_file.read(), output_file.read())
 
     def test_regex_flexibility(self):
         timeline = otio.adapters.read_from_file(SCREENING_EXAMPLE_PATH)
@@ -443,6 +461,19 @@ V     C        00:00:00:00 00:00:00:05 00:00:00:00 00:00:00:05
 
         # VALIDATE
         self.assertEqual(tl.duration().value, (11 * 24) + 12)
+
+    def test_wipe_parse(self):
+        tl = otio.adapters.read_from_file(WIPE_TEST)
+        self.assertEqual(len(tl.tracks[0]), 3)
+
+        wipe = tl.tracks[0][1]
+        self.assertTrue(isinstance(wipe, otio.schema.Transition))
+
+        self.assertEqual(wipe.transition_type, "SMPTE_Wipe")
+        self.assertEqual(wipe.metadata["cmx_3600"]["transition"], "W001")
+
+        self.assertEqual(tl.tracks[0][0].duration().value, 14)
+        self.assertEqual(tl.tracks[0][2].duration().value, 6)
 
     def test_fade_to_black_ends_with_gap(self):
         # EXERCISE
@@ -1007,6 +1038,14 @@ V     C        00:00:00:00 00:00:00:05 00:00:00:00 00:00:00:05
                 duration=otio.opentime.from_timecode("00:00:01:12", 24)
             )
         )
+
+    def test_transition_duration(self):
+        tl = otio.adapters.read_from_file(TRANSITION_DURATION_TEST)
+        self.assertEqual(len(tl.tracks[0]), 5)
+
+        self.assertIsInstance(tl.tracks[0][2], otio.schema.Transition)
+
+        self.assertEqual(tl.tracks[0][2].duration().value, 26.0)
 
 
 if __name__ == "__main__":

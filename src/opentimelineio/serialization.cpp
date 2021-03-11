@@ -47,6 +47,7 @@ public:
     virtual void write_value(bool value) = 0;
     virtual void write_value(int value) = 0;
     virtual void write_value(int64_t value) = 0;
+    virtual void write_value(uint64_t value) = 0;
     virtual void write_value(double value) = 0;
     virtual void write_value(std::string const& value) = 0;
     virtual void write_value(class RationalTime const& value) = 0;
@@ -125,6 +126,10 @@ public:
     }
 
     void write_value(int64_t value) {
+        _store(any(value));
+    }
+
+    void write_value(uint64_t value) {
         _store(any(value));
     }
 
@@ -282,6 +287,10 @@ public:
         _writer.Int64(value);
     }
 
+    void write_value(uint64_t value) {
+        _writer.Uint64(value);
+    }
+
     void write_value(std::string const& value) {
         _writer.String(value.c_str());
     }
@@ -392,7 +401,6 @@ void SerializableObject::Writer::_build_dispatch_tables() {
     auto& wt = _write_dispatch_table;
     wt[&typeid(void)] = [this](any const&) { _encoder.write_null_value(); };
     wt[&typeid(bool)] = [this](any const& value) { _encoder.write_value(any_cast<bool>(value)); };
-    wt[&typeid(int)] = [this](any const& value) { _encoder.write_value(any_cast<int>(value)); };
     wt[&typeid(int64_t)] = [this](any const& value) { _encoder.write_value(any_cast<int64_t>(value)); };
     wt[&typeid(double)] = [this](any const& value) { _encoder.write_value(any_cast<double>(value)); };
     wt[&typeid(std::string)] = [this](any const& value) { _encoder.write_value(any_cast<std::string const&>(value)); };
@@ -425,7 +433,6 @@ void SerializableObject::Writer::_build_dispatch_tables() {
     auto& et = _equality_dispatch_table;
     et[&typeid(void)] = &_simple_any_comparison<void>;
     et[&typeid(bool)] = &_simple_any_comparison<bool>;
-    et[&typeid(int)] = &_simple_any_comparison<int>;
     et[&typeid(int64_t)] = &_simple_any_comparison<int64_t>;
     et[&typeid(double)] = &_simple_any_comparison<double>;
     et[&typeid(std::string)] = &_simple_any_comparison<std::string>;
@@ -509,7 +516,7 @@ void SerializableObject::Writer::write(std::string const& key, bool value) {
     _encoder.write_value(value);
 }
 
-void SerializableObject::Writer::write(std::string const& key, int value) {
+void SerializableObject::Writer::write(std::string const& key, int64_t value) {
     _encoder_write_key(key);
     _encoder.write_value(value);
 }
@@ -556,16 +563,26 @@ void SerializableObject::Writer::write(std::string const& key, SerializableObjec
         return;
     }
 
-#ifdef OTIO_INSTANCING_SUPPORT
     auto e = _id_for_object.find(value);
     if (e != _id_for_object.end()) {
+#ifdef OTIO_INSTANCING_SUPPORT
         /*
          * We've already written this value.
          */
         _encoder.write_value(SerializableObject::ReferenceId { e->second });
+#else
+        /*
+         * We're encountering the same object while it is still
+         * in the map, meaning we're in the middle of writing it out.
+         * That's a cycle, as opposed to mere instancing, which we
+         * allow so as not to break old allowed behavior.
+         */
+        std::string s = string_printf("cyclically encountered object has schema %s",
+                                      value->schema_name().c_str());
+        _encoder._error(ErrorStatus(ErrorStatus::OBJECT_CYCLE, s));
+#endif        
         return;
     }
-#endif
 
     std::string const& schema_type_name = value->_schema_name_for_reference();
     if (_next_id_for_type.find(schema_type_name) == _next_id_for_type.end()) {
@@ -590,10 +607,16 @@ void SerializableObject::Writer::write(std::string const& key, SerializableObjec
     _encoder.write_key("OTIO_REF_ID");
     _encoder.write_value(next_id);
 #endif
-
     value->write_to(*this);
 
     _encoder.end_object();
+
+#ifndef OTIO_INSTANCING_SUPPORT
+    auto valueEntry = _id_for_object.find(value);
+    if (valueEntry != _id_for_object.end()) {
+        _id_for_object.erase(valueEntry);
+    }
+#endif    
 }
 
 void SerializableObject::Writer::write(std::string const& key, AnyDictionary const& value) {
@@ -708,7 +731,13 @@ std::string serialize_json_to_string(any const& value, ErrorStatus* error_status
     OTIO_rapidjson::StringBuffer s;    
     
     if (indent < 0) {
-        OTIO_rapidjson::Writer<decltype(s)> json_writer(s);
+        OTIO_rapidjson::Writer<
+            decltype(s), 
+            OTIO_rapidjson::UTF8<>,
+            OTIO_rapidjson::UTF8<>,
+            OTIO_rapidjson::CrtAllocator,
+            OTIO_rapidjson::kWriteNanAndInfFlag
+            > json_writer(s);
         JSONEncoder<decltype(json_writer)> json_encoder(json_writer);
 
         if (!SerializableObject::Writer::write_root(value, json_encoder, error_status)) {
@@ -716,7 +745,14 @@ std::string serialize_json_to_string(any const& value, ErrorStatus* error_status
         }
     }
     else {
-        OTIO_rapidjson::PrettyWriter<decltype(s)> json_writer(s);
+        OTIO_rapidjson::PrettyWriter<
+            decltype(s), 
+            OTIO_rapidjson::UTF8<>,
+            OTIO_rapidjson::UTF8<>,
+            OTIO_rapidjson::CrtAllocator,
+            OTIO_rapidjson::kWriteNanAndInfFlag
+            > json_writer(s);
+
         JSONEncoder<decltype(json_writer)> json_encoder(json_writer);
 
         json_writer.SetIndent(' ', indent);
@@ -740,12 +776,24 @@ bool serialize_json_to_file(any const& value, std::string const& file_name,
     bool status;
     
     if (indent < 0) {
-        OTIO_rapidjson::Writer<decltype(osw)> json_writer(osw);
+        OTIO_rapidjson::Writer<
+            decltype(osw),
+            OTIO_rapidjson::UTF8<>,
+            OTIO_rapidjson::UTF8<>,
+            OTIO_rapidjson::CrtAllocator,
+            OTIO_rapidjson::kWriteNanAndInfFlag
+            > json_writer(osw);
         JSONEncoder<decltype(json_writer)> json_encoder(json_writer);
         status = SerializableObject::Writer::write_root(value, json_encoder, error_status);
     }
     else {
-        OTIO_rapidjson::PrettyWriter<decltype(osw)> json_writer(osw);
+        OTIO_rapidjson::PrettyWriter<
+            decltype(osw),
+            OTIO_rapidjson::UTF8<>,
+            OTIO_rapidjson::UTF8<>,
+            OTIO_rapidjson::CrtAllocator,
+            OTIO_rapidjson::kWriteNanAndInfFlag
+        > json_writer(osw);
         JSONEncoder<decltype(json_writer)> json_encoder(json_writer);
 
         json_writer.SetIndent(' ', indent);
