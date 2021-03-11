@@ -3,6 +3,7 @@
 #include "opentime/rationalTime.h"
 #include "opentimelineio/item.h"
 #include "opentimelineio/track.h"
+#include "opentimelineio/edit/edit.h"
 #include "opentimelineio/event/eventStack.h"
 
 namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
@@ -22,8 +23,8 @@ struct Intersection
         None = -1,          //< covers "all before", "all after", and "meets"
         Contains,           //< range contains other item
         Contained,          //< range is contained by an item
-        OverlapBefore,      //< range overlaps item and (starts before or begins)
-        OverlapAfter,       //< range overlaps item and (ends after or finishes)
+        IntersectBefore,    //< range intersects item and (starts before or begins)
+        IntersectAfter,     //< range intersects item and (ends after or finishes)
     };
 
     IntersectionType type;
@@ -49,8 +50,30 @@ struct Intersection
 };
 using Intersections = std::vector<Intersection>;
 
+
+/*
+    Obtain the Intersections of a given time range on a track. This is excellent for
+    edit commands as it can define the items affected by a time range which is the
+    most common form of coordinates from an editors perspective.
+
+    There are thirteen scenarios that can occur between two time ranges in terms of
+    intersections.
+
+    The Intersection object has a source_before and source_after term which depict
+    the remainder time range of the active track items. See the below examples for
+    more information.
+
+    @note: `source_range_before` and `source_range_after` are in the item coordinates
+           not the track.
+
+    If the track_range completely covers the range of a child, there is no source_after
+    or source_begin.
+
+    If the track_range begins or finishes the range of a child, there is no source_before
+    or source_after respectively.
+*/
 Intersections get_intersections(
-        Track *track,
+        Track* track,
         TimeRange const& track_range,
         ErrorStatus* error_status,
         int count = -1);
@@ -122,7 +145,7 @@ Intersections get_intersections(
 EventStack* overwrite(Item* item,
                       Track* track,
                       optional<RationalTime> const& track_time,
-                      ErrorStatus *error_status,
+                      ErrorStatus* error_status,
                       Item* fill_template = nullptr,
                       bool preview = false);
 
@@ -177,9 +200,52 @@ EventStack* overwrite(Item* item,
 EventStack* insert(Item* item,
                    Track* track,
                    optional<RationalTime> const& track_time,
-                   ErrorStatus *error_status,
+                   ErrorStatus* error_status,
                    Item* fill_template = nullptr,
                    bool preview = false);
 
+
+
+/**
+ * Slice an item in two at a given time. This also takes a coordinate
+ * enum to know the reference point of the item
+ *
+ *    Let item = A
+ *    let at_time = 25 @ 24fps
+ *
+ *    0                                             N
+ *    | ------------------------------------------- |
+ *    | [0    GAP  20][0         A           50]    |
+ *    | ------------------------------------------- |
+ *
+ *    if coordinates == Local:
+ *    | ------------------------------------------- |
+ *    | [0    GAP  20][0    A   25][26   A  50]     |
+ *    | ------------------------------------------- |
+ *
+ *    if coordinates == Parent:
+ *    | ------------------------------------------- |
+ *    | [0    GAP  20][0 A 5][6      A      50]     |
+ *    | ------------------------------------------- |
+ *
+ *    if coordinates == Global:
+ *        - This only matters if the parent is a track in a compound
+ *          stack, at which point we might be better off having the
+ *          user just convert from one time to the other
+ *
+ * In the event that no slice would happen (e.g. at_time is outside of the)
+ * items scope, an empty stack is returned
+ *
+ * @param item
+ * @param at_timek
+ * @param coordinates
+ * @param error_status
+ * @param preview
+ */
+EventStack* slice(Item* item,
+                  optional<RationalTime> const& at_time,
+                  ErrorStatus* error_status,
+                  Coordinates coordinates = Coordinates::Parent,
+                  bool preview = false);
 
 } }

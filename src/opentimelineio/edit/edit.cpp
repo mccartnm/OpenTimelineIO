@@ -21,7 +21,7 @@ ItemEdit::ItemEdit(Track* track, Item* item, std::string const& name, AnyDiction
 
 ItemEdit::~ItemEdit() {
     // Possibly check out the track and item to see if we can safely
-    // remove them... TODO?
+    // remove them...
 }
 
 void ItemEdit::set_track(Track* track)
@@ -39,31 +39,6 @@ void ItemEdit::set_requires_track(bool required)
     _require_track = required;
 }
 
-bool ItemEdit::read_from(Reader& reader/*, EventContext& context*/) {
-    //
-    // REQUIRES: ID (Or symbol) System for item context
-    //
-    // std::string track_id;
-    // reader.read("track", &track_id);
-    // _track = context.from_id<Track>(track_id);
-    //
-    // std::string item_id;
-    // reader.read("item", &item_id);
-    // _item = context.from_id<Item>(item_id);
-    //
-    return true;
-}
-
-void ItemEdit::write_to(Writer& writer) const {
-    //
-    // REQUIRES: ID System for item context
-    //
-    // writer.writer("track", _track->context_id());
-    // writer.writer("item", _item->context_id());
-    //
-    return;
-}
-
 bool ItemEdit::_validate(ErrorStatus *error_status)
 {
     if (!item()) {
@@ -72,8 +47,9 @@ bool ItemEdit::_validate(ErrorStatus *error_status)
     else if (!track()) {
         // TODO: Probably replace this with a smarter validation layer
         // In this event the item was added to a track over the span
-        // of the stack. This shouldn't happen much in practice (what's)
-        // the point of adding something you're removing?
+        // of a parent event stack. This shouldn't happen much in
+        // practice (what's the point of adding something you're
+        // removing?) That said - editing is tricky.
         auto use_track = dynamic_cast<Track*>(item()->parent());
         if (use_track) {
             set_track(use_track);

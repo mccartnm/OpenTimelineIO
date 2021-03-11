@@ -17,13 +17,32 @@ namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 
 namespace edit_util {
 
+/*
+    Utility for inserting an item after all currently available
+    track data.
 
+    Given the scenario:
+
+                        [  B  ]
+                        ↓
+    +--------------------------+
+    |[   A   ]|
+    +--------------------------+
+             ⬆ End of current track
+
+    We want to insert B by create a GAP (or provided fill_template)
+    item to create the result:
+
+    +--------------------------+
+    |[   A   ][  GAP   ][  B  ]|
+    +--------------------------+
+*/
 bool push_fill(EventStack *stack,
                Track* track,
                Item* item,
                Item* fill_template,
                const TimeRange &place_range,
-		       ErrorStatus *error_status)
+               ErrorStatus *error_status)
 {
     Gap::Retainer<Gap> g = nullptr;
     if (!fill_template) {
@@ -35,7 +54,6 @@ bool push_fill(EventStack *stack,
     if (*error_status || !fill)
         return false;
 
-    // VERIFY: Does this get affected by transitions/effects
     RationalTime end_of_current = track->available_range(error_status).end_time_exclusive();
     if (*error_status)
         return false;
@@ -52,6 +70,27 @@ bool push_fill(EventStack *stack,
 }
 
 
+/*
+    Utility for generating a "duplicate" of an item when another item is
+    being inserted and the existing item contains the new.
+
+    Given the scenario:
+
+            [   B    ]
+            ↓
+    +--------------------------+
+    |[            A           ]|
+    +--------------------------+
+
+    This will produce the following:
+
+    +--------------------------+
+    |[  A  ][   B    ][   A'  ]|
+    +--------------------------+
+
+    Where A' is a clone of the original A. Both A and A' have their source
+    ranges modified to to retain the original begin and finish points.
+*/
 bool slice_and_gen(int insertion_index,
                    Track* track,
                    EventStack *stack,
@@ -80,27 +119,6 @@ bool slice_and_gen(int insertion_index,
 } // edit_util
 
 
-/*
-    Obtain the Intersections of a given time range on a track. This is excellent for
-    edit commands as it can define the items affected by a time range which is the
-    most common form of coordinates from an editors perspective.
-
-    There are thirteen scenarios that can occur between two time ranges in terms of
-    intersections.
-
-    The Intersection object has a source_before and source_after term which depict
-    the remainder time range of the active track items. See the below examples for
-    more information.
-
-    @note: `source_range_before` and `source_range_after` are in the item coordinates
-           not the track.
-
-    If the track_range completely covers the range of a child, there is no source_after
-    or source_begin.
-
-    If the track_range begins or finishes the range of a child, there is no source_before
-    or source_after respectively.
-*/
 Intersections get_intersections(
         Track *track,
         TimeRange const& track_range,
@@ -204,11 +222,11 @@ Intersections get_intersections(
             );
 
             if (child_range.begins(track_range.start_time())) {
-                // child_range.finishes() means Contains which is handled above
-                type = Intersection::OverlapBefore;
+                // child_range.finishes(...) means Contains which is handled above
+                type = Intersection::IntersectBefore;
             }
             else if (track_range.finishes(child_range)) {
-                type = Intersection::OverlapAfter;
+                type = Intersection::IntersectAfter;
             }
 
             intersections.push_back({
@@ -219,9 +237,9 @@ Intersections get_intersections(
                 source_after
             });
 
-        } else if (track_range.overlaps(child_range)) {
+        } else if (track_range.intersects(child_range)) {
             /*
-                The track range overlaps the child range in some way. This covers the rest
+                The track range intersects the child range in some way. This covers the rest
                 of the cases _except_ for the case of Intersection::None
 
                               source_after
@@ -243,7 +261,7 @@ Intersections get_intersections(
 
             if (track_range.start_time() < child_range.start_time()) {
                 // The new range starts _before_ this child
-                type = Intersection::OverlapBefore;
+                type = Intersection::IntersectBefore;
                 source_after = TimeRange(
                     child_source_range.start_time() + (track_range.end_time_exclusive() - child_range.start_time()),
                     (child_range.end_time_exclusive() - track_range.end_time_exclusive())
@@ -251,7 +269,7 @@ Intersections get_intersections(
 
             } else {
                 // .contains() above takes care of other cases
-                type = Intersection::OverlapAfter;
+                type = Intersection::IntersectAfter;
                 source_before = TimeRange(
                     child_source_range.start_time(),
                     (track_range.start_time() - child_range.start_time())
@@ -287,7 +305,7 @@ Intersections get_intersections(
             break; // We have all we care to look for
         }
     }
-	return intersections;
+    return intersections;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -299,6 +317,11 @@ EventStack* overwrite(Item* item,
                       Item* fill_template,
                       bool preview)
 {
+    if (!item) {
+        *error_status = ErrorStatus::NOT_AN_ITEM;
+        return nullptr;
+    }
+
     auto item_range = item->source_range();
     if (!item_range) {
         *error_status = ErrorStatus::INVALID_TIME_RANGE;
@@ -306,7 +329,7 @@ EventStack* overwrite(Item* item,
     }
 
     TimeRange place_range = TimeRange(track_time.value(), (*item_range).duration());
-	Intersections intersections = get_intersections(track, place_range, error_status);
+    Intersections intersections = get_intersections(track, place_range, error_status);
     if (*error_status)
         return nullptr;
 
@@ -318,8 +341,8 @@ EventStack* overwrite(Item* item,
         // this item is meant to appear
         //
         bool ok = edit_util::push_fill(
-			stack.get(), track, item, fill_template, place_range, error_status
-		);
+            stack.get(), track, item, fill_template, place_range, error_status
+        );
         if (!ok)
             return nullptr;
     }
@@ -348,7 +371,7 @@ EventStack* overwrite(Item* item,
                 insertion_index++; // New item comes _after_ the intersected item
                 bool ok = edit_util::slice_and_gen(
                     insertion_index,
-					track,
+                    track,
                     stack.get(),
                     intersection,
                     error_status
@@ -357,7 +380,7 @@ EventStack* overwrite(Item* item,
                     return nullptr;
                 break;
             }
-            case Intersection::OverlapBefore:
+            case Intersection::IntersectBefore:
             {
                 // In this instance, we don't remove the item, we only adjust the
                 // source range to be the source_after
@@ -367,7 +390,7 @@ EventStack* overwrite(Item* item,
                 ));
                 break;
             }
-            case Intersection::OverlapAfter:
+            case Intersection::IntersectAfter:
             {
                 insertion_index++; // New item comes _after_ the intersected item
                 stack->add_event(new ModifyItemSourceRangeEdit(
@@ -403,6 +426,11 @@ EventStack* insert(Item* item,
                    Item* fill_template,
                    bool preview)
 {
+    if (!item) {
+        *error_status = ErrorStatus::NOT_AN_ITEM;
+        return nullptr;
+    }
+
     auto item_range = item->source_range();
     if (!item_range) {
         *error_status = ErrorStatus::INVALID_TIME_RANGE;
@@ -422,8 +450,8 @@ EventStack* insert(Item* item,
 
     if (intersections.size() == 0) {
         bool ok = edit_util::push_fill(
-			stack.get(), track, item, fill_template, place_range, error_status
-		);
+            stack.get(), track, item, fill_template, place_range, error_status
+        );
         if (!ok)
             return nullptr;
 
@@ -435,13 +463,13 @@ EventStack* insert(Item* item,
         switch (intersection.type)
         {
         case Intersection::Contained:
-        case Intersection::OverlapAfter:
+        case Intersection::IntersectAfter:
         {
             // We have to split an item, and shift everything else
             insertion_index++;
             bool ok = edit_util::slice_and_gen(
                 insertion_index,
-				track,
+                track,
                 stack.get(),
                 intersection,
                 error_status
@@ -451,22 +479,103 @@ EventStack* insert(Item* item,
             break;
         }
         case Intersection::Contains:
-        case Intersection::OverlapBefore:
+        case Intersection::IntersectBefore:
         case Intersection::None:
             break;
         }
 
-        // We'll always insert the item for overwrite
+        // We'll always insert the item
         stack->add_event(new InsertItemEdit(insertion_index, track, item));
     }
 
+    if (!preview) {
+        stack->run(error_status);
+        if (*error_status) {
+            return nullptr;
+        }
+    }
+    return stack.release();
+}
+
+
+EventStack* slice(Item* item,
+                  optional<RationalTime> const& at_time,
+                  ErrorStatus* error_status,
+                  Coordinates coordinates,
+                  bool preview)
+{
+    if (!item) {
+        *error_status = ErrorStatus::NOT_AN_ITEM;
+        return nullptr;
+    }
+
+    Track* use_track = dynamic_cast<Track*>(item->parent());
+    if (!use_track) {
+        *error_status = {ErrorStatus::NOT_A_CHILD_OF, "cannot slice trackless item"};
+		return nullptr;
+    }
+
+    auto item_range = use_track->range_of_child(item, error_status);
+    if (*error_status) {
+        return nullptr;
+    }
+
+    std::unique_ptr<EventStack> stack(new EventStack({}, "slice"));
+    RationalTime use_time = at_time.value();
+    //
+    // Convert all coordinated to the track (Coordinates::Parent) time
+    // so we can build an intersection (f any)
+    //
+    switch (coordinates)
+    {
+    case Coordinates::Item:
+    {
+        use_time = item_range.start_time() + (item_range.duration() - use_time);
+        break;
+    }
+    case Coordinates::Global:
+    {
+        // TODO - find based on the global timeline...
+        break;
+    }
+    case Coordinates::Parent:
+    default:
+        break;
+    }
+
+    RationalTime one_frame = RationalTime(1, use_time.rate());
+	TimeRange intersect_range = TimeRange(use_time, one_frame);
+
+    // Account for begins and finishes
+    if (intersect_range.begins(item_range) || item_range.finishes(intersect_range.end_time_exclusive())) {
+        return stack.release();
+    }
+
+    auto intersections = get_intersections(
+        use_track, intersect_range, error_status, /*count=*/1
+    );
+    if (intersections.size() == 0) {
+		return stack.release(); // No slice to be found
+    }
+
+	Intersection &intersection = intersections.front();
+    bool ok = edit_util::slice_and_gen(
+        intersection.index,
+        use_track,
+        stack.get(),
+        intersection,
+        error_status
+    );
+    if (!ok) {
+        return nullptr;
+    }
 	if (!preview) {
 		stack->run(error_status);
 		if (*error_status) {
 			return nullptr;
 		}
 	}
-    return stack.release();
+    return stack.release(); // We've accomplished the slice
 }
 
 

@@ -32,7 +32,6 @@ bool ModifyItemSourceRangeEdit::read_from(Reader& reader/*, EventContext& contex
 
 void ModifyItemSourceRangeEdit::write_to(Writer& writer) const {
     Parent::write_to(writer);
-    return;
 }
 
 REGISTER_EVENT("ModifyItemSourceRangeEdit", ModifyItemSourceRangeEdit);

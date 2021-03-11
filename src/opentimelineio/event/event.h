@@ -49,11 +49,8 @@ public:
 protected:
     virtual ~Event() {}
 
-    virtual void forward(ErrorStatus* error_status);
-    virtual void reverse(ErrorStatus* error_status);
-
-    virtual bool read_from(Reader&/*, EventContext&*/) override;
-    virtual void write_to(Writer&) const override;
+	virtual void forward(ErrorStatus* error_status);
+	virtual void reverse(ErrorStatus* error_status);
 
     // Overload to provide validation before forward/reverse are called
     virtual bool _validate(ErrorStatus*) { return true; }
@@ -61,8 +58,6 @@ protected:
 private:
     bool _has_run = false;
 };
-
-using RetainedEvent = SerializableObject::Retainer<Event>;
 
 } }
 

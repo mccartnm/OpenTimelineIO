@@ -16,7 +16,7 @@ RemoveItemEdit::RemoveItemEdit(
 void RemoveItemEdit::forward(ErrorStatus *error_status)
 {
     // Q: Should this be found in the constructor?
-    _forward_index = track()->_index_of_child(item(), error_status);
+    _forward_index = track()->index_of_child(item(), error_status);
     if (*error_status) {
         return;
     }
@@ -33,7 +33,7 @@ void RemoveItemEdit::reverse(ErrorStatus *error_status)
     track()->insert_child(_forward_index, use_item, error_status);
 }
 
-bool RemoveItemEdit::read_from(Reader& reader/*, EventContext& context*/) {
+bool RemoveItemEdit::read_from(Reader& reader) {
     reader.read("fw_index", &_forward_index);
     return Parent::read_from(reader);
 }

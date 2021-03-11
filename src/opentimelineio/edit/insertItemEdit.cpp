@@ -22,6 +22,7 @@ void InsertItemEdit::forward(ErrorStatus *error_status)
 {
     auto use_track = track();
     if (_index > use_track->children().size()) {
+        // Q: Should this just clamp?
         *error_status = ErrorStatus::ILLEGAL_INDEX;
         return;
     }

@@ -30,7 +30,7 @@ EventStack::~EventStack()
     }
 }
 
-void EventStack::add_event(RetainedEvent event) {
+void EventStack::add_event(Retainer<Event> event) {
     _events.push_back(event);
 }
 
@@ -75,15 +75,6 @@ void EventStack::reverse(ErrorStatus *error_status) {
             return;
         }
     }
-}
-
-bool EventStack::read_from(SerializableObject::Reader &reader) {
-    // FIXME: Will probably have to introduce child <-> parent hookups
-    return reader.read("events", &_events);
-}
-
-void EventStack::write_to(SerializableObject::Writer &writer) const {
-    writer.write("events", _events);
 }
 
 // -- Register

@@ -50,15 +50,7 @@ void Event::reverse(ErrorStatus* error_status)
     UNUSED(error_status);
 }
 
-bool Event::read_from(Reader &reader) {
-    return Parent::read_from(reader);
-}
-
-void Event::write_to(Writer &writer) const {
-    Parent::write_to(writer);
-}
-
-// DO NOT REGISTER - THIS IS THE BASE
+// This is registered in typeRegistry.cpp so we don't need:
 // REGISTER_EVENT("Event", Event);
 
 } }

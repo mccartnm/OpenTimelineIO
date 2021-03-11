@@ -10,6 +10,18 @@ namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 using RetainedItem = SerializableObject::Retainer<Item>;
 using RetainedTrack = SerializableObject::Retainer<Track>;
 
+/*
+    Coordinate system lookup utility
+
+    TODO: This probably belongs in a more broad location
+*/
+enum class Coordinates {
+    Item,
+    Parent,
+    Global
+};
+
+
 /* Abstract Event for editing an Item */
 class ItemEdit : public Event {
 public:
@@ -34,9 +46,6 @@ protected:
     void set_item(Item* item);
 
     void set_requires_track(bool required);
-
-    virtual bool read_from(Reader&);
-    virtual void write_to(Writer&) const;
 
     bool _validate(ErrorStatus *error_status) override;
 

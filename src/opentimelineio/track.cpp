@@ -132,7 +132,7 @@ std::pair<Composable::Retainer<Composable>, Composable::Retainer<Composable>>
 Track::neighbors_of(Composable const* item, ErrorStatus* error_status, NeighborGapPolicy insert_gap) const {
     std::pair<Retainer<Composable>, Retainer<Composable>> result { nullptr, nullptr };
     
-    auto index = _index_of_child(item, error_status);
+    auto index = index_of_child(item, error_status);
     if (*error_status) {
         return result;
     }

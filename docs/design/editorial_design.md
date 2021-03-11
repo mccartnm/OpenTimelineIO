@@ -17,22 +17,14 @@ The industry is full of timeline management software but nearly all of them incl
         - As an example, if a user wants to remove a clip but keep the same track length, they must also handle creating something to fill the now-missing time with the same source range as the removed item and insert it in the original items index.
     - This system would bridge the gap between core data structures and common edit maneuvers. It will allow users to feel like they are working with an interface or set of objects rather than pure data structures
 
-2. Changelist (git-ish for OTIO)
-    - A possibility for this is toolkit is the ability to generate deltas of a timeline to play them back as required. This delta system could power a more fluid lock-free environment for editor and inter-department changes.
-    - However, this is a variable step function compared to the use case above as it requires:
-        - Context management (schema's require an identifier)
-        - Timelines require a means of consistently hashing data structure
-        - Event system for atomic change control
-
-
 ## Structure
-The underlying implementation for these edit commands will be in C++, under the `opentimelineio/algo` directory.
+The underlying implementation for these edit commands will be in C++, under the `opentimelineio/edit` directory.
 
 ```
 OpenTimelineIO/
     `- src/
         `- opentimelineio/
-            `- algo/
+            `- edit/
                 `- ...
 ```
 
@@ -120,7 +112,7 @@ Scenarios:
     | [ FILL ][0        C         40]             |
     | ------------------------------------------- |
 """
-otio.algorithms.overwrite(
+otio.edit.overwrite(
     item: Item,
     track: Track,
     track_time: RationalTime,
@@ -178,7 +170,7 @@ Scenarios:
     | [ FILL ][0        C         40]             |
     | ------------------------------------------- |
 """
-otio.algorithms.insert(
+otio.edit.insert(
     item: Item,
     track: Track,
     track_time: RationalTime,
@@ -247,7 +239,7 @@ Scenarios:
     | ------------------------------------------- |
 
 """
-otio.algorithms.trim(
+otio.edit.trim(
     item: Item,
     delta_in: RationalTime = None,   #< Duration of change
     delta_out: RationalTime = None,  #< Duration of change
@@ -300,13 +292,12 @@ Scenarios:
           stack, at which point we might be better off having the
           user just convert from one time to the other
 """
-otio.algorithms.slice(
+otio.edit.slice_item(
     item: Item,
     at_time: RationalTime,
-    coordinates: otio.algorithms.Coordinates.(Local|Parent|Global*)
+    coordinates: otio.edit.Coordinates.(Local|Parent|Global*)
 )
 ```
-> I'm not sure if we have a coordinate enumerator already?
 
 ---
 
@@ -352,7 +343,7 @@ Scenarios:
     | [0    GAP  20][0     A      45][0   B   10] |
     | ------------------------------------------- |
 """
-otio.algorithms.slip(
+otio.edit.slip(
     item: Item,
     delta: RationalTime,
 )
@@ -405,7 +396,7 @@ Scenarios:
     | [0   GAP  15][5    A      50][0   B     20] |
     | ------------------------------------------- |
 """
-otio.algorithms.slide(
+otio.edit.slide(
     item: Item,
     delta: RationalTime, # Relative like slide
 )
@@ -482,7 +473,7 @@ Scenarios:
     | ------------------------------------------- |
 
 """
-otio.algorithms.ripple(
+otio.edit.ripple(
     item: Item,
     delta_in: RationalTime = None,   #< Duration of change
     delta_out: RationalTime = None,  #< Duration of change
@@ -560,7 +551,7 @@ Scenarios:
     | [0    GAP  20][5   A  25][0     B    20]    |
     | ------------------------------------------- |
 """
-otio.algorithms.roll(
+otio.edit.roll(
     item: Item,
     delta_in: RationalTime = None,   #< Duration of change
     delta_out: RationalTime = None,  #< Duration of change
@@ -592,11 +583,11 @@ Args:
             - Sequence : Don't modify the sequence, trim item if required
             - Fit      : Apply Time Effect
 """
-otio.algorithms.fill(
+otio.edit.fill(
     item: Item,
     track: Track,
     track_time: RationalTime,
-    reference_point: otio.algorithms.ReferencePoint.Source
+    reference_point: otio.edit.ReferencePoint.Source
 )
 ```
 - This may still require some additional tinkering.
@@ -623,7 +614,7 @@ public:
     bool revert();
 };
 ```
-An event is atomic in nature and does "one thing" to an `Item`. Each edit maneuver (e.g. `otio.algorithms.overwrite(...)`) would generate a vector of these events that can be played forward and, possibly, backward. The result of them collectively is the commands result.
+An event is atomic in nature and does "one thing" to an `Item`. Each edit maneuver (e.g. `otio.edit.overwrite(...)`) would generate a vector of these events that can be played forward and, possibly, backward. The result of them collectively is the commands result.
 
 ```cpp
 for (EditEvent &event: events) {

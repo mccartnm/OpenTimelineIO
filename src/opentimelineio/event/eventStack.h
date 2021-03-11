@@ -18,17 +18,14 @@ public:
                AnyDictionary const& metadata = AnyDictionary());
     virtual ~EventStack();
 
-    void add_event(RetainedEvent event);
+    void add_event(Retainer<Event> event);
 
 protected:
     void forward(ErrorStatus *error_status) override;
     void reverse(ErrorStatus *error_status) override;
 
-    bool read_from(SerializableObject::Reader&) override;
-    void write_to(SerializableObject::Writer&) const override;
-
 private:
-    std::vector<RetainedEvent> _events;
+    std::vector<Retainer<Event>> _events;
 
 };
 

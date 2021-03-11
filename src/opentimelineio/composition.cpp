@@ -160,7 +160,7 @@ Composition::handles_of_child(Composable const* /* child */, ErrorStatus* /* err
     return std::make_pair(optional<RationalTime>(), optional<RationalTime>());
 }
 
-int Composition::_index_of_child(Composable const* child, ErrorStatus* error_status) const {
+int Composition::index_of_child(Composable const* child, ErrorStatus* error_status) const {
     for (size_t i = 0; i < _children.size(); i++) {
         if (_children[i].value == child) {
             return int(i);
@@ -219,7 +219,7 @@ TimeRange Composition::range_of_child(Composable const* child, ErrorStatus* erro
     
     assert(!parents.empty());
     for (auto parent: parents) {
-        auto index = parent->_index_of_child(current, error_status);
+        auto index = parent->index_of_child(current, error_status);
         if (*error_status) {
             return TimeRange();
         }
@@ -255,7 +255,7 @@ optional<TimeRange> Composition::trimmed_range_of_child(Composable const* child,
     
     assert(!parents.empty());
     for (auto parent: parents) {
-        auto index = parent->_index_of_child(current, error_status);
+        auto index = parent->index_of_child(current, error_status);
         if (*error_status) {
             return TimeRange();
         }

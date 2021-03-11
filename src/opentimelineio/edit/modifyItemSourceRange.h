@@ -4,7 +4,6 @@
 
 namespace opentimelineio { namespace OPENTIMELINEIO_VERSION {
 
-/* Perform an insertion based on index */
 class ModifyItemSourceRangeEdit : public ItemEdit {
 public:
     struct Schema {
@@ -18,9 +17,6 @@ public:
                               optional<TimeRange> const& new_range = nullopt,
                               std::string const& name = std::string(),
                               AnyDictionary const& metadata = AnyDictionary());
-
-    // optional<TimeRange> const& new_range() const;
-    // void set_new_range(optional<TimeRange> const& range);
 
 protected:
     virtual void forward(ErrorStatus *error_status) override;

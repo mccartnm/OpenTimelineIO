@@ -108,25 +108,33 @@ class EditCommandTests(unittest.TestCase, otio_test_utils.OTIOAssertions):
     def test_intersections(self):
         Intersection = otio.edit.Intersection
 
+        # [  self.clip  ]
         self.clip.source_range = self.tr(1, 20)
         self.track.append(self.clip)
 
+        # [  self.clip  ][  c2  ]
         c2 = self.new_clip('c2')
         self.track.append(c2)
+
+        self.assertEqual(len(self.track), 2)
+
+        tr = self.tr(10, 25)
+        cr = self.track.range_of_child(self.clip)
 
         #        |                  | <- track_range
         # [  self.clip  ][  c2  ]
         intersections = Intersection.get_intersections(
             self.track,
-            track_range=self.tr(10, 25)
+            track_range=tr
         )
 
         # -- This should result it 2 intersections
         self.assertEqual(len(intersections), 2)
         self.assertEqual(intersections[0].item, self.clip)
 
-        self.assertEqual(intersections[0].type,
-                         Intersection.Type.OverlapAfter)
+        self.assertEqual(intersections[0].type,            
+                         Intersection.Type.IntersectAfter)
+
         # The range of our current clip that exists before
         # the overlap.
         self.assertEqual(intersections[0].source_range_before,
@@ -134,6 +142,20 @@ class EditCommandTests(unittest.TestCase, otio_test_utils.OTIOAssertions):
 
         self.assertEqual(intersections[1].type,
                          Intersection.Type.Contains)
+
+
+        clip3 = self.new_clip('c3')
+        self.track.append(clip3)
+
+        intersections = Intersection.get_intersections(
+            self.track,
+            track_range=tr
+        )
+
+        self.assertEqual(len(intersections), 3)
+        self.assertEqual(intersections[-1].type,
+                         Intersection.Type.IntersectBefore)
+
 
     def test_overwrite(self):
         self.clip.source_range = self.tr(1, 25)
@@ -173,9 +195,14 @@ class EditCommandTests(unittest.TestCase, otio_test_utils.OTIOAssertions):
         c2 = self.new_clip("c2")
         otio.edit.insert(c2, self.track, RationalTime(40, 24))
 
+        # Validate that the following was created:
         # [  self.clip  ][      Gap     ][  c2  ]
         self.assertEqual(len(self.track), 3)
         self.assertTrue(isinstance(self.track[1], otio.schema.Gap))
+
+        gap = self.track[1]
+        self.assertTrue(gap.source_range, self.tr(0, 16))
+        self.assertTrue(self.track.range_of_child(gap), self.tr(26, 16))
 
         #
         #             [   c3   ]
@@ -187,8 +214,10 @@ class EditCommandTests(unittest.TestCase, otio_test_utils.OTIOAssertions):
         c3 = self.new_clip("c3")
         otio.edit.insert(c3, self.track, track_time=RationalTime(20, 24))
 
-        # We've effectively "sliced" the self.clip and pushed it
-        # down the timeline
+        # We've effectively "sliced" the self.clip and then modified the range of
+        # it and it's new clone
+        self.assertEqual(len(self.track), 5)
+        self.assertEqual(self.track[1], c3)
         self.assertEqual(self.clip.source_range.duration, RationalTime(20, 24))
         self.assertEqual(type(self.track[2]), otio.schema.Clip)
         self.assertEqual(type(self.track[3]), otio.schema.Gap)
@@ -212,3 +241,17 @@ class EditCommandTests(unittest.TestCase, otio_test_utils.OTIOAssertions):
             lambda: otio.edit.insert(self.clip, self.track, RationalTime(10, 24))
         )
         self.assertEqual(len(self.track), 0)
+
+
+    def test_slice_command(self):
+        """
+        Test we can slice an item within a track
+        """
+        self.clip.source_range = self.tr(1, 25)
+
+        self.track.append(self.clip)
+        self.assertEqual(len(self.track), 1)
+
+        otio.edit.slice_item(self.clip, RationalTime(5, 24))
+
+        self.assertEqual(len(self.track), 2)

@@ -37,6 +37,7 @@ struct ErrorStatus {
         INVALID_TIME_RANGE,
         OBJECT_WITHOUT_DURATION,
         CANNOT_TRIM_TRANSITION,
+        OBJECT_CYCLE,
         INVALID_EXECUTION_ORDER,
     };
 

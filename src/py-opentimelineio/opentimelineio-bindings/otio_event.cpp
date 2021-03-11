@@ -49,6 +49,13 @@ static void define_event(py::module m) {
 
 
 static void define_edit_events(py::module m) {
+
+    py::enum_<Coordinates>(m, "Coordinates")
+        .value("Item", Coordinates::Item)
+        .value("Parent", Coordinates::Parent)
+        .value("Global", Coordinates::Global);
+
+
     py::class_<ItemEdit, Event, managing_ptr<ItemEdit>>(m, "ItemEdit", py::dynamic_attr())
         .def(py::init([](std::string const& name, Track* track, Item* item, py::object metadata) {
                             return new ItemEdit(track, item, name,
@@ -102,12 +109,12 @@ static void define_edit_commands(py::module m) {
     auto intersect = py::class_<Intersection>(m, "Intersection");
 
     // Build an enum for the types of intersections
-	py::enum_<Intersection::IntersectionType>(intersect, "Type")
-		.value("None", Intersection::IntersectionType::None)
-		.value("Contains", Intersection::IntersectionType::Contains)
-		.value("Contained", Intersection::IntersectionType::Contained)
-		.value("OverlapBefore", Intersection::IntersectionType::OverlapBefore)
-		.value("OverlapAfter", Intersection::IntersectionType::OverlapAfter);
+    py::enum_<Intersection::IntersectionType>(intersect, "Type")
+        .value("None", Intersection::IntersectionType::None)
+        .value("Contains", Intersection::IntersectionType::Contains)
+        .value("Contained", Intersection::IntersectionType::Contained)
+        .value("IntersectBefore", Intersection::IntersectionType::IntersectBefore)
+        .value("IntersectAfter", Intersection::IntersectionType::IntersectAfter);
 
     intersect
         .def_readonly("type", &Intersection::type)
@@ -168,6 +175,24 @@ static void define_edit_commands(py::module m) {
             "track"_a,
             "track_time"_a,
             "fill_template"_a = nullptr,
+            "preview"_a = false);
+
+
+    m.def("slice_item", [](Item *item,
+                           RationalTime at_time,
+                           Coordinates coordinates,
+                           bool preview) {
+                            return slice(
+                                item,
+                                at_time,
+                                ErrorStatusHandler(),
+                                coordinates,
+                                preview
+                            );
+                            },
+            "item"_a,
+            "at_time"_a,
+            "coordinates"_a = Coordinates::Parent,
             "preview"_a = false);
 }
 

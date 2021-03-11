@@ -59,9 +59,7 @@ public:
     
     virtual std::map<Composable*, TimeRange> range_of_all_children(ErrorStatus* error_status) const;
 
-    // FIXME :: ---------------------------------------------------------- Where should this live?
-    int _index_of_child(Composable const* child, ErrorStatus* error_status) const;
-    // --------------------------------------------------------------------------------
+    int index_of_child(Composable const* child, ErrorStatus* error_status) const;
 
 protected:
     virtual ~Composition();

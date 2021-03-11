@@ -37,5 +37,6 @@ from .. _otio import (
 
     # Basic Edit Commands
     overwrite,
-    insert
+    insert,
+    slice_item,
 )
